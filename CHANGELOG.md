@@ -1,4 +1,4 @@
-# Changelog for 0GLPIXO
+# Changelog for AccessTransparency
 
 All notable changes to this project will be documented in this file.
 

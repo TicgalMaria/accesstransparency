@@ -4,11 +4,11 @@
 		"deprecate": "project",
 		"files": [
 			{
-				"pattern": "0GLPIxx.pot",
+				"pattern": "accesstransparency.pot",
 				"lang": "en_GB"
 			}, {
 				"group": "existing",
-				"file": "0GLPIxx.pot",
+				"file": "accesstransparency.pot",
 				"pattern": "./*.po",
 				"type": "po",
 				"lang": "${autodetectLang}"

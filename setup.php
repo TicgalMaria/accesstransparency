@@ -1,0 +1,97 @@
+<?php
+
+/**
+ * -------------------------------------------------------------------------
+ * AccessTransparency plugin for GLPI
+ * Copyright (C) 2025 by the TICGAL Team.
+ * https://www.tic.gal
+ * -------------------------------------------------------------------------
+ * LICENSE
+ * This file is part of the AccessTransparency plugin.
+ * AccessTransparency plugin is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ * AccessTransparency plugin is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with AccessTransparency. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @package   accesstransparency
+ * @author    the TICGAL team
+ * @copyright Copyright (c) 2025 TICGAL team
+ * @license   AGPL License 3.0 or (at your option) any later version
+ *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
+ * @link      https://www.tic.gal
+ * @since     2025
+ * -------------------------------------------------------------------------
+ */
+
+use Glpi\Plugin\Hooks;
+
+define('PLUGIN_ACCESSTRANSPARENCY_VERSION', '1.0.0');
+define('PLUGIN_ACCESSTRANSPARENCY_MIN_GLPI', '11.0');
+define('PLUGIN_ACCESSTRANSPARENCY_MAX_GLPI', '11.9');
+
+/**
+ * Plugin_Version_accesstransparency
+ * @return array
+ */
+function plugin_version_accesstransparency(): array
+{
+    return [
+        'name'          => 'Access Transparency',
+        'version'       => PLUGIN_ACCESSTRANSPARENCY_VERSION,
+        'author'        => '<a href="https://tic.gal">TICGAL</a>',
+        'homepage'      => 'https://tic.gal',
+        'license'       => 'AGPLv3+',
+        'requirements'  => [
+            'glpi' => [
+                'min' => PLUGIN_ACCESSTRANSPARENCY_MIN_GLPI,
+                'max' => PLUGIN_ACCESSTRANSPARENCY_MAX_GLPI,
+            ],
+        ],
+    ];
+}
+
+/**
+ * Plugin_Init_Accesstransparency
+ * @return void
+ */
+function plugin_init_accesstransparency(): void
+{
+    /** @var array $PLUGIN_HOOKS */
+    global $PLUGIN_HOOKS;
+
+    $PLUGIN_HOOKS['csrf_compliant']['accesstransparency'] = true;
+
+    include_once __DIR__ . '/inc/userinteractions.class.php';
+    include_once __DIR__ . '/inc/profile.class.php';
+    include_once __DIR__ . '/inc/user.class.php';
+    include_once __DIR__ . '/inc/document.class.php';
+
+    Plugin::registerClass(PluginAccesstransparencyConfig::class, ['addtabon' => Config::class]);
+    Plugin::registerClass(PluginAccesstransparencyProfile::class, ['addtabon' => Profile::class]);
+    Plugin::registerClass(PluginAccesstransparencyUser::class, ['addtabon' => User::class]);
+    Plugin::registerClass(PluginAccesstransparencyDocument::class, ['addtabon' => Document::class]);
+
+    if (Session::getLoginUserID() && (!isset($_REQUEST['_in_modal']) || !$_REQUEST['_in_modal'])) {
+        $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['accesstransparency'] = ['public/tracking.js'];
+    }
+
+    $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['accesstransparency'] = 'front/config.form.php';
+    $PLUGIN_HOOKS['display_login']['accesstransparency'] = 'plugin_acesstransparency_displayLogin';
+
+    CronTask::Register(
+        'PluginAccesstransparencyUserinteractions',
+        'PurgeInteractionLogs',
+        HOUR_TIMESTAMP,
+        [
+            'param' => 12,
+            'state' => 1,
+            'mode'  => CronTask::MODE_INTERNAL,
+        ],
+    );
+}

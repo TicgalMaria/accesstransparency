@@ -1,0 +1,93 @@
+{% set version_parts = glpi_version|split('.') %}
+{% set major_version = version_parts[0]|default(0) %}
+
+{% if major_version < 11 %}
+  <form method="get" action="">
+{% endif %}
+
+<div class="table-responsive">
+  <input type="hidden" name="id" value="{{ userId }}" />
+
+  <div class="input-group" style="max-width: 300px;">
+    <form method="GET" action="user.form.php" id="searchForm" class="d-flex align-items-center" style="max-width: 300px;">
+      <input type="hidden" name="id" value="{{ userId }}" />
+      <input
+        type="text"
+        name="filters[keyword]"
+        value="{{ filters.keyword|default('') }}"
+        class="form-control"
+        placeholder="{{ __('Search or filter results') }}"
+      />
+      <button class="btn btn-outline-secondary" type="submit">
+        <i class="ti ti-search"></i>
+        <span>{{ __('Search') }}</span>
+      </button>
+    </form>
+  </div>
+
+  {{ include('components/pager.html.twig', {
+    href: href,
+    additional_params: additional_params,
+    start: start,
+    count: total_number,
+    is_tab: is_tab
+  }) }}
+
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>ID {{ __('User') }}</th>
+        <th>{{ __('User') }}</th>
+        <th>{{ __('Date') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if combined is empty %}
+        <tr>
+          <td colspan="8" class="text-center text-muted">{{ __('No results') }}</td>
+        </tr>
+      {% else %}
+        {% for row in combined %}
+            <tr>
+              <td>{{ row.users_id }}</td>
+              <td>
+                {% if row.name is iterable %}
+                    {% for name in row.name %}
+                        {{ name }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                {% else %}
+                    {{ row.name }}
+                {% endif %}
+              <td>{{ row.date_creation is defined ? row.date_creation|date('Y-m-d H:i') : '' }}</td>
+            </tr>
+        {% endfor %}
+      {% endif %}
+    </tbody>
+  </table>
+
+  <div class="ms-auto d-inline-flex align-items-center d-none d-md-block mb-2 my-2">
+    {{ __('Entries to show:') }}
+    {% include 'components/dropdown/limit.html.twig' %}
+  </div>
+</div>
+
+{% if major_version < 11 %}
+  </form>
+{% endif %}
+
+<script type="text/javascript">
+  $(function () {
+    $('.logs-filter-select-multiple').select2({ width: '100%' });
+  });
+
+  $('.show_log_filters').on('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    $('.filter_row').toggleClass('d-none');
+    $(this).toggleClass('btn-secondary active btn-outline-secondary');
+
+    return false;
+  });
+</script>

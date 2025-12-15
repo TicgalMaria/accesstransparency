@@ -24,10 +24,10 @@ PLUGINNAME_CAPIT=$(echo $PLUGINNAME_PASCAL | tr '[:upper:]' '[:lower:]' | sed 's
 PLUGINNAME_MINUS=$(echo $PLUGINNAME_PASCAL | tr '[:upper:]' '[:lower:]')
 PLUGINNAME_MAYUS=$(echo $PLUGINNAME_PASCAL | tr '[:lower:]' '[:upper:]')
 
-STRING_PASCAL="0GLPIXO"
-STRING_CAPIT="0GLPIXx"
-STRING_MINUS="0GLPIxx"
-STRING_MAYUS="0GLPIXX"
+STRING_PASCAL="AccessTransparency"
+STRING_CAPIT="Accesstransparency"
+STRING_MINUS="accesstransparency"
+STRING_MAYUS="ACCESSTRANSPARENCY"
 
 # search and replace in all files in the plugin folder
 grep -rl $STRING_PASCAL $PARENT_FOLDER_PATH | xargs sed -i "s/$STRING_PASCAL/$PLUGINNAME_PASCAL/g"

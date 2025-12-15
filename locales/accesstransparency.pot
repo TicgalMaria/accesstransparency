@@ -1,0 +1,75 @@
+# accesstransparency Glpi Plugin.
+# Copyright (C) 2025 TICgal
+# This file is distributed under the same license as the PACKAGE package.
+# TICgal, 2025
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-31 13:55+0100\n"
+"PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: inc/profile.class.php:86
+msgid "Access Transparency"
+msgstr ""
+
+#: inc/config.class.php:119
+msgid "Invalid CSRF token"
+msgstr ""
+
+#: inc/config.class.php:177 entrada estándar:52
+msgid "Log retention"
+msgstr ""
+
+#: inc/config.class.php:178
+msgid "Keep all"
+msgstr ""
+
+#: inc/config.class.php:179
+msgid "Delete all"
+msgstr ""
+
+#: inc/userinteractions.class.php:139
+msgid "Purge old interaction logs"
+msgstr ""
+
+#: inc/userinteractions.class.php:140
+msgid "Retention period (in minutes)"
+msgstr ""
+
+#: inc/userinteractions.class.php:156
+msgid "No logs deleted (Keep all selected)"
+msgstr ""
+
+#: inc/userinteractions.class.php:182
+#, php-format
+msgid "Deleted old interaction log for user %s"
+msgstr ""
+
+#: front/config.form.php:57
+msgid "Configuration saved successfully"
+msgstr ""
+
+#: front/config.form.php:63
+msgid "Failed to update configuration"
+msgstr ""
+
+#: entrada estándar:35
+msgid "Access Transparency Logs purge configuration"
+msgstr ""
+
+#: entrada estándar:55
+msgid "Select how long to keep logs"
+msgstr ""
+
+#: entrada estándar:72
+msgid "Save"
+msgstr ""

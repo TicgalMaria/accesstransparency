@@ -4,8 +4,22 @@ SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 PARENT_FOLDER_PATH=$(dirname "$SCRIPT_DIR")
 PLUGINNAME=$(basename "$PARENT_FOLDER_PATH")
 
+PUBLIC_RELEASE=0
+while getopts ":p" opt; do
+    case $opt in
+        p)
+            PUBLIC_RELEASE=1
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND - 1))
+
 if [ ! "$#" -eq 1 ]; then
-    echo "Usage $0 <release>"
+    echo "Usage $0 [-p] <release>"
     exit 1
 fi
 
@@ -161,8 +175,13 @@ fi
 
 cd ..
 
-PACKAGE_NAME="glpi-$PLUGINNAME-$RELEASE"
-echo "Creating release package: $PACKAGE_NAME.tar.bz2"
+if [ "$PUBLIC_RELEASE" = 1 ]; then
+    echo "Creating public release"
+    PACKAGE_NAME="glpi-$PLUGINNAME-$RELEASE"
+else
+    echo "Creating private release"
+    PACKAGE_NAME="$PLUGINNAME-$RELEASE"
+fi
 tar cjf "$PACKAGE_NAME.tar.bz2" $PLUGINNAME
 
 cd $INIT_PWD

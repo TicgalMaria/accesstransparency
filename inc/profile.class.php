@@ -1,57 +1,47 @@
 <?php
 
 /**
+ * -------------------------------------------------------------------------
+ * ActualTime plugin for GLPI
+ * Copyright (C) 2018-2025 by the TICGAL Team.
+ * https://www.tic.gal/
+ * -------------------------------------------------------------------------
+ * LICENSE
+ * This file is part of the ActualTime plugin.
+ * ActualTime plugin is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ * ActualTime plugin is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along withOneTimeSecret. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @package   ActualTime
+ * @author    the TICGAL team
+ * @copyright Copyright (c) 2018-2025 TICGAL team
+ * @license   AGPL License 3.0 or (at your option) any later version
+ *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
+ * @link      https://www.tic.gal/
+ * @since     2018
+ * -------------------------------------------------------------------------
  */
-
-// phpcs:ignore PSR1.Classes.ClassDeclaration.MissingNamespace
-class Plugin0GLPIXxProfile extends Profile
+class PluginAccesstransparencyProfile extends Profile
 {
-    public static $rightname = "profile";
+    public static $rightname = 'profile';
 
     /**
      * {@inheritDoc}
      */
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string|array
     {
-        switch ($item::getType()) {
-            case Profile::getType():
-                return self::createTabEntry(self::getTypeName(1));
+        switch ($item->getType()) {
+            case 'Profile':
+                return self::createTabEntry('Access Transparency');
         }
-
         return '';
-    }
-
-    /**
-     * getStandardCRUD
-     *
-     * @return array
-     */
-    private function getStandardCRUD(): array
-    {
-        return [
-            READ    => __('Read'),
-            UPDATE  => __('Update'),
-            CREATE  => __('Create'),
-            DELETE  => __('Delete'),
-            PURGE   => __('Purge'),
-        ];
-    }
-
-    /**
-     * getAllRights
-     *
-     * @return array
-     */
-    public function getAllRights(): array
-    {
-        return [
-            [
-                'rights'    => self::getStandardCRUD(),
-                'label'     => __('0GLPIXO', '0GLPIxx'),
-                'itemtype'  => Plugin0GLPIXxConfig::class,
-                'field'     => 'plugin_0GLPIxx_config',
-            ],
-        ];
     }
 
     /**
@@ -59,22 +49,26 @@ class Plugin0GLPIXxProfile extends Profile
      */
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
     {
-        if ($item->getType() == Profile::getType()) {
-            /** @var Profile $item */
-            return self::displayProfileForm($item);
+        switch ($item->getType()) {
+            case Profile::class:
+                /** @var Profile $item */
+                $profile = new self();
+                return $profile->displayProfileForm($item);
         }
-
         return false;
     }
 
     /**
-     * displayProfileForm
-     *
+     * Display the profile form for AccessTransparency rights
      * @param  Profile $profile
      * @return bool
      */
-    public static function displayProfileForm(Profile $profile): bool
+    public function displayProfileForm(Profile $profile): bool
     {
+        if (!Session::haveRight(self::$rightname, READ)) {
+            return false;
+        }
+
         $can_edit = Session::haveRight(self::$rightname, UPDATE);
 
         echo "<div class='spaced'>";
@@ -82,11 +76,13 @@ class Plugin0GLPIXxProfile extends Profile
             echo "<form method='post' action='" . htmlspecialchars($profile::getFormURL()) . "'>";
         }
 
+        $rights = self::getGeneralRights();
+
         $matrix_options = [
             'canedit' => $can_edit,
-            'title'   => '0GLPIXO',
+            'title'   => __('Access Transparency', 'accesstransparency'),
         ];
-        $rights = (new self())->getAllRights();
+
         $profile->displayRightsChoiceMatrix($rights, $matrix_options);
 
         if ($can_edit) {
@@ -97,21 +93,33 @@ class Plugin0GLPIXxProfile extends Profile
             Html::closeForm();
         }
         echo '</div>';
-
         return true;
     }
 
     /**
-     * uninstall
-     *
-     * @param  Migration $migration
+     * Get general rights array
+     * @return array
+     */
+    public static function getGeneralRights(): array
+    {
+        return [
+            [
+                'rights' => [READ => __('Read')],
+                'label'  => __('Historical'),
+                'field'  => 'plugin_accesstransparency_view',
+            ],
+        ];
+    }
+
+    /**
+     * Remove profile rights on uninstall
+     * @param Migration $migration
      * @return void
      */
-    public static function uninstall(Migration $migration)
+    public static function uninstall(Migration $migration): void
     {
-        $migration->displayMessage("Removing profile rights");
-        $profile = new self();
-        foreach ($profile->getAllRights() as $data) {
+        $migration->displayMessage("Deleting accesstransparency profile rights");
+        foreach (self::getGeneralRights() as $data) {
             ProfileRight::deleteProfileRights([$data['field']]);
         }
     }

@@ -1,22 +1,48 @@
 <?php
 
 /**
-*/
+ * -------------------------------------------------------------------------
+ * AccessTransparency plugin for GLPI
+ * Copyright (C) 2025 by the TICGAL Team.
+ * https://www.tic.gal
+ * -------------------------------------------------------------------------
+ * LICENSE
+ * This file is part of the AccessTransparency plugin.
+ * AccessTransparency plugin is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ * AccessTransparency plugin is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with AccessTransparency. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @package   accesstransparency
+ * @author    the TICGAL team
+ * @copyright Copyright (c) 2025 TICGAL team
+ * @license   AGPL License 3.0 or (at your option) any later version
+ *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
+ * @link      https://www.tic.gal
+ * @since     2025
+ * -------------------------------------------------------------------------
+ */
 
 /**
  * Call all install methods of the plugin
  *
  * @return bool
  */
-function plugin_0GLPIxx_install(): bool
+function plugin_accesstransparency_install(): bool
 {
-    $migration = new Migration(PLUGIN_0GLPIXX_VERSION);
+    $migration = new Migration(PLUGIN_ACCESSTRANSPARENCY_VERSION);
 
     // Parse inc directory
     foreach (glob(dirname(__FILE__) . '/inc/*') as $filepath) {
         // Load *.class.php files and get the class name
         if (preg_match("/inc.(.+)\.class.php/", $filepath, $matches)) {
-            $classname = 'Plugin0GLPIXx' . ucfirst($matches[1]);
+            $classname = 'PluginAccesstransparency' . ucfirst($matches[1]);
             include_once $filepath;
             // If the install method exists, load it
             if (method_exists($classname, 'install')) {
@@ -33,15 +59,15 @@ function plugin_0GLPIxx_install(): bool
  *
  * @return bool
  */
-function plugin_0GLPIxx_uninstall(): bool
+function plugin_accesstransparency_uninstall(): bool
 {
-    $migration = new Migration(PLUGIN_0GLPIXX_VERSION);
+    $migration = new Migration(PLUGIN_ACCESSTRANSPARENCY_VERSION);
 
     // Parse inc directory
     foreach (glob(dirname(__FILE__) . '/inc/*') as $filepath) {
         // Load *.class.php files and get the class name
         if (preg_match("/inc.(.+)\.class.php/", $filepath, $matches)) {
-            $classname = 'Plugin0GLPIXx' . ucfirst($matches[1]);
+            $classname = 'PluginAccesstransparency' . ucfirst($matches[1]);
             include_once $filepath;
             // If the install method exists, load it
             if (method_exists($classname, 'uninstall')) {

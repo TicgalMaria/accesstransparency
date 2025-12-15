@@ -1,26 +1,52 @@
 <?php
 
 /**
+ * -------------------------------------------------------------------------
+ * AccessTransparency plugin for GLPI
+ * Copyright (C) 2025 by the TICGAL Team.
+ * https://www.tic.gal
+ * -------------------------------------------------------------------------
+ * LICENSE
+ * This file is part of the AccessTransparency plugin.
+ * AccessTransparency plugin is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ * AccessTransparency plugin is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with AccessTransparency. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @package   accesstransparency
+ * @author    the TICGAL team
+ * @copyright Copyright (c) 2025 TICGAL team
+ * @license   AGPL License 3.0 or (at your option) any later version
+ *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
+ * @link      https://www.tic.gal
+ * @since     2025
+ * -------------------------------------------------------------------------
  */
 
 include('../../../inc/includes.php');
-
-if (!Plugin::isPluginActive('0GLPIxx')) {
+// Check if plugin is activated...
+$plugin = new Plugin();
+if (!$plugin->isInstalled('accesstransparency') || !$plugin->isActivated('accesstransparency')) {
     Html::displayNotFoundError();
 }
 
-Session::checkRight(Plugin0GLPIXxConfig::$rightname, UPDATE);
+Session::checkRight('config', UPDATE);
 
-$config = new Plugin0GLPIXxConfig();
-
+$config = new PluginAccesstransparencyConfig();
 if (isset($_POST["update"])) {
+    $config->check($_POST['id'], UPDATE);
     $config->update($_POST);
     Html::back();
 }
 
 /** @var array $CFG_GLPI */
 global $CFG_GLPI;
-
 $redirect = $CFG_GLPI["root_doc"] . "/front/config.form.php";
-$redirect .= "?forcetab=" . urlencode('Plugin0GLPIXxConfig$1');
+$redirect .= "?forcetab=" . urlencode('PluginAccesstransparencyConfig$1');
 Html::redirect($redirect);

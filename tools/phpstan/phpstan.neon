@@ -39,9 +39,3 @@ services:
     -
         class: CustomPHPStanRules\PermissionControlRule
         tags: [phpstan.rules.rule]
-    -
-        class: CustomPHPStanRules\UserSessionCheck
-        tags: [phpstan.rules.rule]
-    -
-        class: CustomPHPStanRules\DebugLogsRule
-        tags: [phpstan.rules.rule]

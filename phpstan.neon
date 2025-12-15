@@ -26,7 +26,6 @@ parameters:
         - '/Call to (static )?method \w+\(\) on an unknown class (GlpiPlugin(\\\w+)+|Plugin\w+)/'
         - '/Access to (property \$\w+|constant \w+) on an unknown class (GlpiPlugin(\\\w+)+|Plugin\w+)/'
         - '/PHPDoc tag \@var for variable \$\w+ contains unknown class (GlpiPlugin(\\\w+)+|Plugin\w+)/'
-        - '/Static method (GlpiPlugin(\\\w+)+|Plugin\w+).* is unused/'
     reportUnmatchedIgnoredErrors: false
 rules:
     - GlpiProject\Tools\PHPStan\Rules\GlobalVarTypeRule
@@ -48,10 +47,4 @@ services:
         tags: [phpstan.rules.rule]
     -
         class: CustomPHPStanRules\PermissionControlRule
-        tags: [phpstan.rules.rule]
-    -
-        class: CustomPHPStanRules\UserSessionCheck
-        tags: [phpstan.rules.rule]
-    -
-        class: CustomPHPStanRules\DebugLogsRule
         tags: [phpstan.rules.rule]
