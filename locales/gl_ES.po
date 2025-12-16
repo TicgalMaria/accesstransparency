@@ -1,0 +1,66 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Localazy (https://localazy.com)\n"
+"Project-Id-Version: Access Transparency\n"
+"Language: gl_ES\n"
+"Plural-Forms: nplurals=2; plural=(n==1) ? 0 : 1;\n"
+
+#: inc/profile.class.php:86
+msgid "Access Transparency"
+msgstr "Access Transparency"
+
+#: entrada estándar:35
+msgid "Access Transparency Logs purge configuration"
+msgstr "Configuración de purga de rexistros de Access Transparency"
+
+#: front/config.form.php:57
+msgid "Configuration saved successfully"
+msgstr "Configuración gardada correctamente"
+
+#: inc/config.class.php:179
+msgid "Delete all"
+msgstr "Eliminar todo"
+
+#: inc/userinteractions.class.php:182
+#, php-format
+msgid "Deleted old interaction log for user %s"
+msgstr "Rexistro de interaccións antigo eliminado para o usuario%s"
+
+#: front/config.form.php:63
+msgid "Failed to update configuration"
+msgstr "Non se puido actualizar a configuración"
+
+#: inc/config.class.php:119
+msgid "Invalid CSRF token"
+msgstr "Token CSRF non válido"
+
+#: inc/config.class.php:178
+msgid "Keep all"
+msgstr "Gardar todo"
+
+#: inc/config.class.php:177 entrada estándar:52
+msgid "Log retention"
+msgstr "Retención de rexistros"
+
+#: inc/userinteractions.class.php:156
+msgid "No logs deleted (Keep all selected)"
+msgstr "Non se eliminaron rexistros (manter todos seleccionados)"
+
+#: inc/userinteractions.class.php:139
+msgid "Purge old interaction logs"
+msgstr "Borrar rexistros de interaccións antigas"
+
+#: inc/userinteractions.class.php:140
+msgid "Retention period (in minutes)"
+msgstr "Período de retención (en minutos)"
+
+#: entrada estándar:72
+msgid "Save"
+msgstr "Gardar"
+
+#: entrada estándar:55
+msgid "Select how long to keep logs"
+msgstr "Seleccionar canto tempo se gardarán os rexistros"

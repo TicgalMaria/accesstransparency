@@ -67,11 +67,6 @@ function plugin_init_accesstransparency(): void
 
     $PLUGIN_HOOKS['csrf_compliant']['accesstransparency'] = true;
 
-    include_once __DIR__ . '/inc/userinteractions.class.php';
-    include_once __DIR__ . '/inc/profile.class.php';
-    include_once __DIR__ . '/inc/user.class.php';
-    include_once __DIR__ . '/inc/document.class.php';
-
     Plugin::registerClass(PluginAccesstransparencyConfig::class, ['addtabon' => Config::class]);
     Plugin::registerClass(PluginAccesstransparencyProfile::class, ['addtabon' => Profile::class]);
     Plugin::registerClass(PluginAccesstransparencyUser::class, ['addtabon' => User::class]);
@@ -82,9 +77,9 @@ function plugin_init_accesstransparency(): void
     }
 
     $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['accesstransparency'] = 'front/config.form.php';
-    $PLUGIN_HOOKS['display_login']['accesstransparency'] = 'plugin_acesstransparency_displayLogin';
+    //$PLUGIN_HOOKS[Hooks::DISPLAY_LOGIN]['accesstransparency'] = 'plugin_acesstransparency_displayLogin';
 
-    CronTask::Register(
+    CronTask::register(
         'PluginAccesstransparencyUserinteractions',
         'PurgeInteractionLogs',
         HOUR_TIMESTAMP,

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-31 13:55+0100\n"
+"POT-Creation-Date: 2025-12-16 08:58+0000\n"
 "PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,59 +17,47 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: inc/profile.class.php:86
+#: inc/profile.class.php:84 inc/document.class.php:41
 msgid "Access Transparency"
 msgstr ""
 
-#: inc/config.class.php:119
-msgid "Invalid CSRF token"
-msgstr ""
-
-#: inc/config.class.php:177 entrada estándar:52
-msgid "Log retention"
-msgstr ""
-
-#: inc/config.class.php:178
-msgid "Keep all"
-msgstr ""
-
-#: inc/config.class.php:179
-msgid "Delete all"
-msgstr ""
-
-#: inc/userinteractions.class.php:139
+#: inc/userinteractions.class.php:118
 msgid "Purge old interaction logs"
 msgstr ""
 
-#: inc/userinteractions.class.php:140
-msgid "Retention period (in minutes)"
+#: inc/userinteractions.class.php:119
+msgid "Retention period (in months)"
 msgstr ""
 
-#: inc/userinteractions.class.php:156
-msgid "No logs deleted (Keep all selected)"
+#: inc/userinteractions.class.php:134
+msgid "No logs purged (keep_all setting)"
 msgstr ""
 
-#: inc/userinteractions.class.php:182
+#: inc/userinteractions.class.php:159
+msgid "No logs to purge"
+msgstr ""
+
+#: inc/userinteractions.class.php:173
 #, php-format
-msgid "Deleted old interaction log for user %s"
+msgid "Purged %d interaction logs"
 msgstr ""
 
-#: front/config.form.php:57
+#: inc/config.class.php:138
 msgid "Configuration saved successfully"
 msgstr ""
 
-#: front/config.form.php:63
-msgid "Failed to update configuration"
-msgstr ""
-
-#: entrada estándar:35
+#: templates/pages/config.html.twig:35
 msgid "Access Transparency Logs purge configuration"
 msgstr ""
 
-#: entrada estándar:55
+#: templates/pages/config.html.twig:54
+msgid "Log retention"
+msgstr ""
+
+#: templates/pages/config.html.twig:57
 msgid "Select how long to keep logs"
 msgstr ""
 
-#: entrada estándar:72
+#: templates/pages/config.html.twig:76
 msgid "Save"
 msgstr ""

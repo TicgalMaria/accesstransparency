@@ -78,7 +78,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
     {
         foreach ($this->fields as $key => $value) {
             if (isset($input[$key]) && $input[$key] != $value) {
-                Log::history('1', Config::class, [1, $key . ' ' . $value, $input[$key]]);
+                Log::history(1, Config::class, [1, $key . ' ' . $value, $input[$key]]);
             }
         }
         return $input;

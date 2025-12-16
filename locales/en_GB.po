@@ -1,75 +1,63 @@
-# English translations for glpi package.
+# English translations for PACKAGE package.
 # Copyright (C) 2025 TICgal
-# This file is distributed under the same license as the glpi package.
+# This file is distributed under the same license as the PACKAGE package.
 # Automatically generated, 2025.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: glpi 11\n"
+"Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-31 13:55+0100\n"
-"PO-Revision-Date: 2025-10-31 13:55+0100\n"
+"POT-Creation-Date: 2025-12-16 08:58+0000\n"
+"PO-Revision-Date: 2025-12-16 08:58+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: en_GB\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=ISO-8859-1\n"
+"Content-Type: text/plain; charset=ASCII\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: inc/profile.class.php:86
+#: inc/profile.class.php:84 inc/document.class.php:41
 msgid "Access Transparency"
 msgstr "Access Transparency"
 
-#: inc/config.class.php:119
-msgid "Invalid CSRF token"
-msgstr "Invalid CSRF token"
-
-#: inc/config.class.php:177 entrada estándar:52
-msgid "Log retention"
-msgstr "Log retention"
-
-#: inc/config.class.php:178
-msgid "Keep all"
-msgstr "Keep all"
-
-#: inc/config.class.php:179
-msgid "Delete all"
-msgstr "Delete all"
-
-#: inc/userinteractions.class.php:139
+#: inc/userinteractions.class.php:118
 msgid "Purge old interaction logs"
 msgstr "Purge old interaction logs"
 
-#: inc/userinteractions.class.php:140
-msgid "Retention period (in minutes)"
-msgstr "Retention period (in minutes)"
+#: inc/userinteractions.class.php:119
+msgid "Retention period (in months)"
+msgstr "Retention period (in months)"
 
-#: inc/userinteractions.class.php:156
-msgid "No logs deleted (Keep all selected)"
-msgstr "No logs deleted (Keep all selected)"
+#: inc/userinteractions.class.php:134
+msgid "No logs purged (keep_all setting)"
+msgstr "No logs purged (keep_all setting)"
 
-#: inc/userinteractions.class.php:182
+#: inc/userinteractions.class.php:159
+msgid "No logs to purge"
+msgstr "No logs to purge"
+
+#: inc/userinteractions.class.php:173
 #, php-format
-msgid "Deleted old interaction log for user %s"
-msgstr "Deleted old interaction log for user %s"
+msgid "Purged %d interaction logs"
+msgstr "Purged %d interaction logs"
 
-#: front/config.form.php:57
+#: inc/config.class.php:138
 msgid "Configuration saved successfully"
 msgstr "Configuration saved successfully"
 
-#: front/config.form.php:63
-msgid "Failed to update configuration"
-msgstr "Failed to update configuration"
-
-#: entrada estándar:35
+#: templates/pages/config.html.twig:35
 msgid "Access Transparency Logs purge configuration"
 msgstr "Access Transparency Logs purge configuration"
 
-#: entrada estándar:55
+#: templates/pages/config.html.twig:54
+msgid "Log retention"
+msgstr "Log retention"
+
+#: templates/pages/config.html.twig:57
 msgid "Select how long to keep logs"
 msgstr "Select how long to keep logs"
 
-#: entrada estándar:72
+#: templates/pages/config.html.twig:76
 msgid "Save"
 msgstr "Save"

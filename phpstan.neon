@@ -3,7 +3,8 @@ parameters:
         maximumNumberOfProcesses: 2
     level: 5
     bootstrapFiles:
-        - ../../inc/based_config.php
+        - ../../stubs/glpi_constants.php
+        - ../../vendor/autoload.php
     paths:
         - ajax
         - front
@@ -47,4 +48,10 @@ services:
         tags: [phpstan.rules.rule]
     -
         class: CustomPHPStanRules\PermissionControlRule
+        tags: [phpstan.rules.rule]
+    -
+        class: CustomPHPStanRules\UserSessionCheck
+        tags: [phpstan.rules.rule]
+    -
+        class: CustomPHPStanRules\DebugLogsRule
         tags: [phpstan.rules.rule]

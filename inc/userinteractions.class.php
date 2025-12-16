@@ -1,8 +1,33 @@
 <?php
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access this file directly");
-}
+/**
+ * -------------------------------------------------------------------------
+ * AccessTransparency plugin for GLPI
+ * Copyright (C) 2025 by the TICGAL Team.
+ * https://www.tic.gal
+ * -------------------------------------------------------------------------
+ * LICENSE
+ * This file is part of the AccessTransparency plugin.
+ * AccessTransparency plugin is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ * AccessTransparency plugin is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with AccessTransparency. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @package   accesstransparency
+ * @author    the TICGAL team
+ * @copyright Copyright (c) 2025 TICGAL team
+ * @license   AGPL License 3.0 or (at your option) any later version
+ *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
+ * @link      https://www.tic.gal
+ * @since     2025
+ * -------------------------------------------------------------------------
+ */
 
 class PluginAccesstransparencyUserinteractions extends CommonDBTM
 {
@@ -72,7 +97,7 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         echo "<table class='tab_cadre_fixe'>";
         echo "<tr><th>Fecha</th><th>Tipo</th><th>ID del ítem</th></tr>";
 
-        if ($iterator && $iterator->count()) {
+        if ($iterator->count()) {
             foreach ($iterator as $row) {
                 echo "<tr>";
                 echo "<td>" . Html::convDateTime($row['date_creation']) . "</td>";
@@ -106,10 +131,8 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         $param  = $config->getLogRetentionMinutes();
 
         if ($param === 'keep_all') {
-            if ($task) {
-                $task->log(__('No logs purged (keep_all setting)', 'accesstransparency'));
-                $task->addVolume(0);
-            }
+            $task->log(__('No logs purged (keep_all setting)', 'accesstransparency'));
+            $task->addVolume(0);
             return 1;
         }
 
@@ -133,10 +156,8 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         $count = count($rows);
 
         if ($count == 0) {
-            if ($task) {
-                $task->log(__('No logs to purge', 'accesstransparency'));
-                $task->addVolume(0);
-            }
+            $task->log(__('No logs to purge', 'accesstransparency'));
+            $task->addVolume(0);
             return 1;
         }
 
@@ -148,11 +169,8 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
             }
         }
 
-        if ($task) {
-            $task->addVolume($deleted);
-            $task->log(sprintf(__('Purged %d interaction logs', 'accesstransparency'), $deleted)); // texto del log
-        }
-
+        $task->addVolume($deleted);
+        $task->log(sprintf(__('Purged %d interaction logs', 'accesstransparency'), $deleted)); // texto del log
         return 1;
     }
 }

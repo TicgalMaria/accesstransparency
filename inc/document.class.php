@@ -1,5 +1,34 @@
 <?php
 
+/**
+ * -------------------------------------------------------------------------
+ * AccessTransparency plugin for GLPI
+ * Copyright (C) 2025 by the TICGAL Team.
+ * https://www.tic.gal
+ * -------------------------------------------------------------------------
+ * LICENSE
+ * This file is part of the AccessTransparency plugin.
+ * AccessTransparency plugin is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ * AccessTransparency plugin is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with AccessTransparency. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @package   accesstransparency
+ * @author    the TICGAL team
+ * @copyright Copyright (c) 2025 TICGAL team
+ * @license   AGPL License 3.0 or (at your option) any later version
+ *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
+ * @link      https://www.tic.gal
+ * @since     2025
+ * -------------------------------------------------------------------------
+ */
+
 use Twig\Loader\FilesystemLoader;
 use Twig\Environment;
 use Twig\TwigFunction;
@@ -33,7 +62,6 @@ class PluginAccesstransparencyDocument extends CommonDBTM
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
         if ($item::getType() === Document::getType()) {
-
             if (!Session::haveRight(self::$rightname, READ)) {
                 return false;
             }
