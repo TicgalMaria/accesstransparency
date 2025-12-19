@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-16 11:03+0000\n"
+"POT-Creation-Date: 2025-12-19 13:25+0000\n"
 "PO-Revision-Date: 2025-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: inc/profile.class.php:84 inc/document.class.php:41
+#: inc/profile.class.php:84 inc/document.class.php:42
 msgid "Access Transparency"
 msgstr ""
 
@@ -42,22 +42,22 @@ msgstr ""
 msgid "Purged %d interaction logs"
 msgstr ""
 
-#: inc/config.class.php:138
+#: inc/config.class.php:144
 msgid "Configuration saved successfully"
 msgstr ""
 
-#: templates/pages/config.html.twig:35
+#: templates/pages/config.html.twig:36
 msgid "Access Transparency Logs purge configuration"
 msgstr ""
 
-#: templates/pages/config.html.twig:54
+#: templates/pages/config.html.twig:55
 msgid "Log retention"
 msgstr ""
 
-#: templates/pages/config.html.twig:57
+#: templates/pages/config.html.twig:58
 msgid "Select how long to keep logs"
 msgstr ""
 
-#: templates/pages/config.html.twig:76
+#: templates/pages/config.html.twig:77
 msgid "Save"
 msgstr ""

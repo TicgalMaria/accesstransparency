@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-16 11:03+0000\n"
-"PO-Revision-Date: 2025-12-16 11:03+0000\n"
+"POT-Creation-Date: 2025-12-19 13:25+0000\n"
+"PO-Revision-Date: 2025-12-19 13:25+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: en_GB\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: inc/profile.class.php:84 inc/document.class.php:41
+#: inc/profile.class.php:84 inc/document.class.php:42
 msgid "Access Transparency"
 msgstr "Access Transparency"
 
@@ -42,22 +42,22 @@ msgstr "No logs to purge"
 msgid "Purged %d interaction logs"
 msgstr "Purged %d interaction logs"
 
-#: inc/config.class.php:138
+#: inc/config.class.php:144
 msgid "Configuration saved successfully"
 msgstr "Configuration saved successfully"
 
-#: templates/pages/config.html.twig:35
+#: templates/pages/config.html.twig:36
 msgid "Access Transparency Logs purge configuration"
 msgstr "Access Transparency Logs purge configuration"
 
-#: templates/pages/config.html.twig:54
+#: templates/pages/config.html.twig:55
 msgid "Log retention"
 msgstr "Log retention"
 
-#: templates/pages/config.html.twig:57
+#: templates/pages/config.html.twig:58
 msgid "Select how long to keep logs"
 msgstr "Select how long to keep logs"
 
-#: templates/pages/config.html.twig:76
+#: templates/pages/config.html.twig:77
 msgid "Save"
 msgstr "Save"
