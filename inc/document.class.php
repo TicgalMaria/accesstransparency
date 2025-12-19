@@ -130,10 +130,12 @@ class PluginAccesstransparencyDocument extends CommonDBTM
         }
         $coreTemplatePath = GLPI_ROOT . '/templates';
 
+        /*
         $loader = new FilesystemLoader([
             $pluginTemplatePath,
             $coreTemplatePath,
         ]);
+        */
         /*
         $twig = new Environment($loader);
 
