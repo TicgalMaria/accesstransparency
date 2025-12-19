@@ -1238,7 +1238,11 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $href = Toolbox::getItemTypeSearchURL(Preference::class) . '?forcetab=PluginAccess$1';
         $additional_params = $is_filtered ? http_build_query(['filters' => $filters]) : "";
 
-        $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
+        if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
+            $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
+        }else{
+            $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
+        }
         $coreTemplatePath = GLPI_ROOT . '/templates';
 
         $loader = new FilesystemLoader([

@@ -60,7 +60,11 @@ if (!$user->getFromDB((int) $userId)) {
     die("User not found");
 }
 
-require_once GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php';
+if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php')) {
+    require_once GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php';
+}else{
+    require_once GLPI_ROOT . '/marketplace/accesstransparency/inc/user.class.php';
+}
 
 $combinedArray = PluginAccesstransparencyUser::showFormUser($user, true);
 $friendlyName = $user->getFriendlyName();

@@ -97,6 +97,7 @@ class PluginAccesstransparencyDocument extends CommonDBTM
         global $DB;
 
         $result = self::getUserInteractionsRaw($doc);
+        $document_id = intval($doc->getID());
 
         foreach ($result as &$row) {
             $row['name'] = [];
@@ -121,8 +122,11 @@ class PluginAccesstransparencyDocument extends CommonDBTM
                 }
             }
         }
-
-        $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
+        if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
+            $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
+        }else{
+            $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
+        }
         $coreTemplatePath = GLPI_ROOT . '/templates';
 
         $loader = new FilesystemLoader([
@@ -147,9 +151,10 @@ class PluginAccesstransparencyDocument extends CommonDBTM
         $twig->addFilter(new \Twig\TwigFilter('safe_dom_id', function ($string) {
             return preg_replace('/[^a-zA-Z0-9_\-]/', '_', $string);
         }));
-
+        $twig->enableAutoReload();
         echo $twig->render('pages/document.html.twig', [
             'combined' => $result,
+            'documentId'   => $document_id,
         ]);
 
         return true;

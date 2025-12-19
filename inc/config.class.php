@@ -113,8 +113,13 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         global $DB;
 
         $config = self::getInstance();
-        $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
+        if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
+            $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
+        }else{
+            $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
+        }
         $coreTemplatePath   = GLPI_ROOT . '/templates';
+
 
         if (isset($_SESSION['accesstransparency']['log_retention_minutes'])) {
             $value = $_SESSION['accesstransparency']['log_retention_minutes'];
