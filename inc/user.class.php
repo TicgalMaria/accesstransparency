@@ -34,6 +34,8 @@ use Twig\Environment;
 use Twig\TwigFunction;
 use Glpi\Csv\CsvResponse;
 use Glpi\Csv\ExportToCsvInterface;
+use Glpi\Application\View\TemplateRenderer;
+
 
 require_once __DIR__ . '/userinteractions.class.php';
 
@@ -1243,13 +1245,13 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }else{
             $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
         }
-        $coreTemplatePath = GLPI_ROOT . '/templates';
+        /*$coreTemplatePath = GLPI_ROOT . '/templates';
 
         $loader = new FilesystemLoader([
             $pluginTemplatePath,
             $coreTemplatePath,
-        ]);
-
+        ]);*/
+        /*
         $twig = new Environment($loader);
 
         $twig->addFunction(new TwigFunction('__', function ($string) {
@@ -1267,6 +1269,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $twig->addFilter(new \Twig\TwigFilter('safe_dom_id', function ($string) {
             return preg_replace('/[^a-zA-Z0-9_\-]/', '_', $string);
         }));
+        */
+        $twig = TemplateRenderer::getInstance();
+        $twig->getEnvironment()->enableAutoReload();
 
         $fields = array_merge($fields, $service);
         $changes = array_merge($changes, $message);
@@ -1300,7 +1305,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $changes = array_keys($translations_map);
 
-        echo $twig->render('pages/access.html.twig', [
+        echo $twig->render('@accesstransparency/pages/access.html.twig', [
             'userId'            => $userid,
             'friendlyName'      => $friendlyName,
             'combined'          => $combinedArrayPaged,

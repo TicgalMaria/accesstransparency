@@ -30,7 +30,8 @@
 
 {% block config_fields %}
   <form method="POST" action="">
-    {{ csrf_token()|raw }}
+    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}" />
+
 
     {{ fields.largeTitle(__('Access Transparency Logs purge configuration', 'accesstransparency'), 'ti ti-news') }}
 

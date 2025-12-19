@@ -29,6 +29,7 @@
  * -------------------------------------------------------------------------
  */
 
+use Glpi\Application\View\TemplateRenderer;
 use Twig\Loader\FilesystemLoader;
 use Twig\Environment;
 use Twig\TwigFunction;
@@ -145,7 +146,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
                 INFO,
             );
         }
-
+/*
         $loader = new FilesystemLoader([$pluginTemplatePath, $coreTemplatePath]);
         $twig = new Environment($loader);
 
@@ -172,8 +173,10 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         $twig->addFilter(new TwigFilter('safe_dom_id', fn($value) => $value));
         $twig->addFilter(new TwigFilter('itemtype_dropdown', fn($value) => $value));
         $twig->addFilter(new TwigFilter('itemtype_form_path', fn($value) => '#'));
-
-        echo $twig->render('pages/config.html.twig', [
+        */
+        $twig = TemplateRenderer::getInstance();
+        $twig->getEnvironment()->enableAutoReload();
+        echo $twig->render('@accesstransparency/pages/config.html.twig', [
             'item' => $config,
             'log_retention_minutes' => $config->getLogRetentionMinutes(),
         ]);

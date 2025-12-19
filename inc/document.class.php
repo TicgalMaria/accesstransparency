@@ -32,6 +32,7 @@
 use Twig\Loader\FilesystemLoader;
 use Twig\Environment;
 use Twig\TwigFunction;
+use Glpi\Application\View\TemplateRenderer;
 
 class PluginAccesstransparencyDocument extends CommonDBTM
 {
@@ -122,9 +123,9 @@ class PluginAccesstransparencyDocument extends CommonDBTM
                 }
             }
         }
-        if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
+        if (file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
             $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
-        }else{
+        } else {
             $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
         }
         $coreTemplatePath = GLPI_ROOT . '/templates';
@@ -133,7 +134,7 @@ class PluginAccesstransparencyDocument extends CommonDBTM
             $pluginTemplatePath,
             $coreTemplatePath,
         ]);
-
+        /*
         $twig = new Environment($loader);
 
         $twig->addFunction(new TwigFunction('__', function ($string) {
@@ -151,8 +152,10 @@ class PluginAccesstransparencyDocument extends CommonDBTM
         $twig->addFilter(new \Twig\TwigFilter('safe_dom_id', function ($string) {
             return preg_replace('/[^a-zA-Z0-9_\-]/', '_', $string);
         }));
-        $twig->enableAutoReload();
-        echo $twig->render('pages/document.html.twig', [
+        */
+        $twig = TemplateRenderer::getInstance();
+        $twig->getEnvironment()->enableAutoReload();
+        echo $twig->render('@accesstransparency/pages/document.html.twig', [
             'combined' => $result,
             'documentId'   => $document_id,
         ]);
