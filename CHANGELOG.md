@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Bug fix
 
-## [1.0.0] - 2023-10-01
+## [1.0.1] - 2025-12-19
+### Bugfix
+- Fix users filters
+
+## [1.0.0] - 2025-12-19
 ### Added
 - Initial release
