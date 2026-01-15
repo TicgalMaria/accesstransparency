@@ -35,7 +35,7 @@ header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
 if (!Plugin::isPluginActive('accesstransparency')) {
-    Html::displayNotFoundError();
+    throw new \Glpi\Exception\Http\NotFoundHttpException();
 }
 
 Session::checkLoginUser();
@@ -45,17 +45,12 @@ $ruta = $_POST['ruta'] ?? '';
 
 if ($action === 'register' && $ruta) {
     $path = substr($ruta, 0, 255);
-    $userId = Session::getLoginUserID();
 
     /** @var \DBmysql $DB */
     global $DB;
 
     try {
-        $DB->insert('glpi_plugin_accesstransparency_userinteractions', [
-            'users_id'      => $userId,
-            'path'          => $path,
-            'date_creation' => date('Y-m-d H:i:s'),
-        ]);
+        PluginAccesstransparencyUserinteractions::registerInteraction($path, $_POST['documents_id']);
 
         echo json_encode(['status' => 'ok', 'ruta' => $path]);
     } catch (Throwable $e) {

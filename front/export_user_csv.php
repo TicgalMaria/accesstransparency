@@ -43,7 +43,7 @@ if (!defined('GLPI_ROOT')) {
 include_once GLPI_ROOT . '/inc/includes.php';
 
 if (!Plugin::isPluginActive('accesstransparency')) {
-    Html::displayNotFoundError();
+    throw new \Glpi\Exception\Http\NotFoundHttpException();
 }
 
 Session::checkLoginUser();

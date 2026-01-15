@@ -49,15 +49,23 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         if (!$DB->tableExists($table)) {
             $migration->displayMessage("Installing $table");
             $query = "CREATE TABLE IF NOT EXISTS `$table` (
-            `id` INT {$default_key_sign} NOT NULL AUTO_INCREMENT,
-            `users_id` INT {$default_key_sign} NOT NULL default 0,
-            `path` varchar(255),
-            `date_creation` TIMESTAMP NULL DEFAULT NULL,
-            PRIMARY KEY (`id`)
-        )ENGINE=InnoDB DEFAULT CHARSET={$default_charset}
-        COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
+                `id` INT {$default_key_sign} NOT NULL AUTO_INCREMENT,
+                `users_id` INT {$default_key_sign} NOT NULL default 0,
+                `path` varchar(255),
+                `documents_id` INT {$default_key_sign} NOT NULL default 0,
+                `date_creation` TIMESTAMP NULL DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `users_id` (`users_id`),
+                KEY `documents_id` (`documents_id`)
+            )ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
 
             $DB->doQuery($query);
+        } else {
+            $migration->addField($table, 'documents_id', 'integer');
+            $migration->addKey($table, 'documents_id', 'documents_id');
+            $migration->addKey($table, 'users_id', 'users_id');
+
+            $migration->migrationOneTable($table);
         }
     }
 
@@ -67,7 +75,7 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         return true;
     }
 
-    public static function registerInteraction(string $path): void
+    public static function registerInteraction(string $path, $documents_id): void
     {
         $user_id = Session::getLoginUserID();
         if (!$user_id) {
@@ -78,6 +86,7 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         $item->add([
             'users_id'  => $user_id,
             'path' => $path,
+            'documents_id' => $documents_id,
             'date_creation' => date('Y-m-d H:i:s'),
         ]);
     }

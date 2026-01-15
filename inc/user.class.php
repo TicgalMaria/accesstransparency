@@ -29,20 +29,15 @@
  * -------------------------------------------------------------------------
  */
 
-use Twig\Loader\FilesystemLoader;
-use Twig\Environment;
-use Twig\TwigFunction;
 use Glpi\Csv\CsvResponse;
 use Glpi\Csv\ExportToCsvInterface;
 use Glpi\Application\View\TemplateRenderer;
-
-
-require_once __DIR__ . '/userinteractions.class.php';
+use Glpi\Search\SearchOption;
+use Glpi\RichText\RichText;
 
 class PluginAccesstransparencyUser extends CommonDBTM
 {
     public static $rightname = 'plugin_accesstransparency_view';
-    private static ?self $instance = null;
     private static $userCache = [];
     private static $translationCache = [];
     private static $followingTranslationCache = [];
@@ -50,59 +45,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
     /**
      * {@inheritDoc}
      */
-    public function __construct()
-    {
-        /** @var \DBmysql $DB */
-        global $DB;
-
-        if ($DB->tableExists($this->getTable())) {
-            $this->getFromDB(1);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     public static function getTypeName($nb = 0): string
     {
         return 'Access Transparency';
-    }
-
-    /**
-     * getInstance
-     * @param  int $n
-     * @return PluginAccesstransparencyUser
-     */
-    public static function getInstance(int $n = 1): PluginAccesstransparencyUser
-    {
-        if (!isset(self::$instance)) {
-            self::$instance = new self();
-            if (!self::$instance->getFromDB($n)) {
-                self::$instance->getEmpty();
-            }
-        }
-        return self::$instance;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function prepareInputForUpdate($input): false|array
-    {
-        foreach ($this->fields as $key => $value) {
-            if (isset($input[$key]) && $input[$key] != $value) {
-                Log::history(1, User::class, [1, $key . ' ' . $value, $input[$key]]);
-            }
-        }
-        return $input;
-    }
-
-    /**
-     * @return string|null The configuration value or null if not found.
-     */
-    public static function getItemType(): ?string
-    {
-        return User::class;
     }
 
     public static function getIcon(): string
@@ -116,13 +61,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string|array
     {
-        if ($item::getType() === User::getType()) {
-            if (!Session::haveRight(self::$rightname, READ)) {
-                return '';
-            }
-
-            /** @var User $user */
-            $user = $item;
+        if ($item::getType() === User::getType() && Session::haveRight(self::$rightname, READ)) {
 
             if (isset($_GET['filters'])) {
                 $_SESSION['accesstransparency']['filters'] = $_GET['filters'];
@@ -132,11 +71,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 unset($_SESSION['accesstransparency']['filters']);
             }
 
-            Session::checkLoginUser();
-            $_SESSION['glpicsrf_token'] = Session::getNewCSRFToken();
-
-            $result = self::arrayData($user);
-            $number = count($rawCombinedArray = $result['mergedArrays']);
+            /*$result = self::arrayData($item);
+            $number = count($result['mergedArrays']);*/
+            $number = 0;
             return self::createTabEntry(self::getTypeName(1), $number);
         }
         return '';
@@ -144,70 +81,182 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
     {
-        if ($item::getType() === User::getType()) {
-            if (!Session::haveRight(self::$rightname, READ)) {
-                return false;
-            }
-            /** @var User $user */
-            $user = $item;
-            return self::showFormUser($user);
+        if ($item::getType() === User::getType() && Session::haveRight(self::$rightname, READ)) {
+            return self::showFormUser($item);
         }
         return false;
     }
 
-    public static function arrayData(User $user): array
+    public static function arrayData(User $user, array $filters = [], int $start = 0): array
     {
         /** @var \DBmysql $DB */
         global $DB;
 
         $userid       = $user->getID();
-        $nameLastname = $user->getFriendlyName();
-        $realName     = $user->fields['realname'] ?? '';
-        $firstName    = $user->fields['firstname'] ?? '';
-        $lastnameName = $nameLastname;
-        $friendlyName = $user->fields['name'];
-        $table = \PluginAccesstransparencyUserinteractions::getTable();
 
-        if (str_starts_with($nameLastname, $realName)) {
-            $lastnameName = trim($firstName . ' ' . $realName);
-        } elseif (str_starts_with($nameLastname, $firstName)) {
-            $lastnameName = trim($realName . ' ' . $firstName);
-        }
+        $login = $user->fields['name'];
+        $surName = $user->fields['realname'];
+        $firstName = $user->fields['firstname'];
 
-        $logsIterator = $DB->request([
-            'SELECT' => ['*'],
+        $table = PluginAccesstransparencyUserinteractions::getTable();
+
+        $list = [];
+
+        $sql_log = [
+            'SELECT' => [
+                'id',
+                'itemtype',
+                'items_id',
+                'user_name',
+                'date_mod',
+            ],
             'FROM'   => 'glpi_logs',
             'WHERE'  => [
                 'OR' => [
-                    ['user_name' => ['LIKE', $friendlyName . ' (' . $userid . ')%']],
-                    ['user_name' => ['LIKE', $nameLastname . ' (' . $userid . ')%']],
-                    ['user_name' => ['LIKE', $lastnameName . ' (' . $userid . ')%']],
+                    ['user_name' => ['LIKE', $login . '%(' . $userid . ')']],
                 ],
             ],
-        ]);
+            'LIMIT' => $_SESSION['glpilist_limit'],
+            'START' => $start,
+            'ORDER' => ['date_mod DESC'],
+        ];
 
-        $eventsIterator = $DB->request([
-            'SELECT' => ['*'],
+        if (!empty($firstName)) {
+            $sql_log['WHERE']['OR'][] = ['user_name' => ['LIKE', $firstName . '%(' . $userid . ')']];
+        }
+
+        if (!empty($surName)) {
+            $sql_log['WHERE']['OR'][] = ['user_name' => ['LIKE', $surName . '%(' . $userid . ')']];
+        }
+
+        if (count($filters) > 0) {
+            if (!empty($filters['date'])) {
+               $sql_log['WHERE']['date_mod'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
+            }
+            if (isset($filters['itemtypes']) && count($filters['itemtypes']) > 0) {
+                $sql_log['WHERE']['itemtype'] = $filters['itemtypes'];
+            }
+            if (isset($filters['fields']) && count($filters['fields']) > 0) {
+                $sql_log['WHERE']['id_search_option'] = $filters['fields'];
+            }
+        }
+
+        $logsIterator = $DB->request($sql_log);
+
+        foreach ($logsIterator as $key => $log) {
+            $data = [
+                'id' => $log['id'],
+                'date' => $log['date_mod'],
+                'itemtype' => $log['itemtype'],
+                'items_id' => $log['items_id'],
+                'field' => '',
+                'change' => '',
+                'source' => 'log',
+            ];
+            if (class_exists($log['itemtype']) && method_exists($log['itemtype'], 'getById')) {
+                if ($item = $log['itemtype']::getById($log['items_id'])) {
+                    $data['url'] = $item->getLinkURL();
+                    $loginfo = self::getHistory($item, $log['id']);
+                    $data['field'] = $loginfo['field'];
+                    $data['change'] = $loginfo['change'];
+                }
+            }
+            $list[] = $data;
+        }
+
+        $sql_events = [
+            'SELECT' => [
+                'id',
+                'type',
+                'date',
+                'service',
+                'message',
+            ],
             'FROM'   => 'glpi_events',
             'WHERE'  => [
                 'OR' => [
-                    ['message' => ['LIKE', '%' . $friendlyName . '%']],
-                    ['message' => ['LIKE', '%' . $nameLastname . ' (' . $userid . ')%']],
-                    ['message' => ['LIKE', '%' . $lastnameName . ' (' . $userid . ')%']],
+                    'message' => ['LIKE', '%' . $login . '%'],
                 ],
             ],
-        ]);
+            'LIMIT' => $_SESSION['glpilist_limit'],
+            'START' => $start,
+            'ORDER' => ['date DESC'],
+        ];
+        if (!empty($firstName)) {
+            $sql_events['WHERE']['OR'][] = ['message' => ['LIKE', '%' . $firstName . '%']];
+        }
+        if (!empty($surName)) {
+            $sql_events['WHERE']['OR'][] = ['message' => ['LIKE', '%' . $surName . '%']];
+        }
 
-        $interactionIterator = $DB->request([
-            'SELECT' => ['id as id_doc', 'path', 'date_creation'],
+        if (count($filters) > 0) {
+            if (!empty($filters['date'])) {
+               $sql_events['WHERE']['date'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
+            }
+            if (isset($filters['itemtypes']) && count($filters['itemtypes']) > 0) {
+                $sql_events['WHERE']['type'] = $filters['itemtypes'];
+            }
+            if (isset($filters['fields']) && count($filters['fields']) > 0) {
+                $sql_events['WHERE']['service'] = $filters['fields'];
+            }
+        }
+
+        $eventsIterator = $DB->request($sql_events);
+
+        foreach ($eventsIterator as $key => $event) {
+            $list[] = [
+                'id' => $event['id'],
+                'date' => $event['date'],
+                'itemtype' => $event['type'],
+                'items_id' => '',
+                'field' => $event['service'],
+                'change' => $event['message'],
+                'source' => 'events',
+            ];
+        }
+
+        $sql_interaction = [
+            'SELECT' => [
+                'id as id_doc',
+                'path',
+                'documents_id',
+                'date_creation',
+            ],
             'FROM'   => $table,
-            'WHERE'  => ['users_id' => $userid],
-        ]);
+            'WHERE'  => [
+                'users_id' => $userid,
+            ],
+            'LIMIT' => $_SESSION['glpilist_limit'],
+            'START' => $start,
+            'ORDER' => ['date_creation DESC'],
+        ];
 
-        $documentsIterator = $DB->request([
-            'SELECT' => ['id as id_document', 'name', 'date_mod as fecha'],
-            'FROM'   => 'glpi_documents',
-        ]);
+        if (count($filters) > 0) {
+            if (!empty($filters['date'])) {
+               $sql_interaction['WHERE']['date_creation'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
+            }
+        }
+        if (isset($filters['itemtypes']) && count($filters['itemtypes']) > 0 && !in_array('file_interaction', $filters['itemtypes'])) {
+            $sql_interaction = [];
+        }
+        if (isset($filters['fields']) && count($filters['fields']) > 0) {
+            $sql_interaction = [];
+        }
+        if (!empty($sql_interaction)) {
+            $interactionIterator = $DB->request($sql_interaction);
+
+            foreach ($interactionIterator as $key => $interaction) {
+                $list[] = [
+                    'id' => $interaction['id_doc'],
+                    'date' => $interaction['date_creation'],
+                    'itemtype' => __('File open'),
+                    'items_id' => '',
+                    'field' => '',
+                    'change' => __('Document') . ': '.Document::getFriendlyNameById($interaction['documents_id']),
+                    'source' => 'interaction',
+                ];
+            }
+        }
 
         $configIterator = $DB->request([
             'SELECT' => ['value'],
@@ -246,14 +295,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
             array_unshift($allLanguages, $defaultLanguage);
         }
 
-        $logsArray = iterator_to_array($logsIterator);
-        $eventsArray = iterator_to_array($eventsIterator);
-        $interactionArray = iterator_to_array($interactionIterator);
-        $documentsArray = iterator_to_array($documentsIterator);
-
         return [
             'allLanguages' => $allLanguages,
-            'mergedArrays' => array_merge($logsArray, $eventsArray, $interactionArray, $documentsArray),
+            'mergedArrays' => $list,
         ];
     }
 
@@ -352,20 +396,509 @@ class PluginAccesstransparencyUser extends CommonDBTM
         });
     }
 
-    private static function hasValidFilters(array $filters): bool
+    public static function getHistory($item, int $logId): array
     {
-        foreach ($filters as $key => $value) {
-            if (is_array($value)) {
-                if (count(array_filter($value)) > 0) {
-                    return true;
+        $DBread = DBConnection::getReadConnection();
+        $itemtable = $item->getTable();
+        $SEARCHOPTION = SearchOption::getOptionsForItemtype($item::getType());
+
+        $log = new Log();
+        $tmp = [];
+
+        $tmp['field']           = "";
+        $tmp['change']          = "";
+        $tmp['datatype']        = "";
+
+        if ($log->getFromDB($logId)) {
+
+            // This is an internal device ?
+            if ($log->fields["linked_action"]) {
+                $action_label = Log::getLinkedActionLabel($log->fields["linked_action"]);
+
+                // Yes it is an internal device
+                switch ($log->fields["linked_action"]) {
+                    case Log::HISTORY_CREATE_ITEM:
+                    case Log::HISTORY_DELETE_ITEM:
+                    case Log::HISTORY_LOCK_ITEM:
+                    case Log::HISTORY_UNLOCK_ITEM:
+                    case Log::HISTORY_RESTORE_ITEM:
+                        $tmp['change'] = htmlescape($action_label);
+                        break;
+
+                    case Log::HISTORY_ADD_DEVICE:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            if ($item2 instanceof Item_Devices) {
+                                $tmp['field'] = $item2->getDeviceTypeName(1);
+                            } else {
+                                $tmp['field'] = $item2->getTypeName(1);
+                            }
+                        }
+                        //TRANS: %s is the component name
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["new_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_UPDATE_DEVICE:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        $linktype_field = explode('#', $log->fields["itemtype_link"]);
+                        $linktype       = $linktype_field[0];
+                        $field          = $linktype_field[1];
+                        $devicetype     = $linktype::getDeviceType();
+                        $tmp['field']   = $devicetype;
+                        $specif_fields  = $linktype::getSpecificities();
+                        if (isset($specif_fields[$field]['short name'])) {
+                            $tmp['field']   = $devicetype;
+                            $tmp['field']  .= " (" . $specif_fields[$field]['short name'] . ")";
+                        }
+                        //TRANS: %1$s is the old_value, %2$s is the new_value
+                        $tmp['change']  = sprintf(
+                            __s('%1$s: %2$s'),
+                            sprintf(
+                                __s('%1$s (%2$s)'),
+                                htmlescape($action_label),
+                                htmlescape($tmp['field'])
+                            ),
+                            sprintf(
+                                __s('%1$s by %2$s'),
+                                htmlescape($log->fields["old_value"]),
+                                htmlescape($log->fields[ "new_value"])
+                            )
+                        );
+                        break;
+
+                    case Log::HISTORY_DELETE_DEVICE:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            if ($item2 instanceof Item_Devices) {
+                                $tmp['field'] = $item2->getDeviceTypeName(1);
+                            } else {
+                                $tmp['field'] = $item2->getTypeName(1);
+                            }
+                        }
+                        //TRANS: %s is the component name
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["old_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_LOCK_DEVICE:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            if ($item2 instanceof Item_Devices) {
+                                $tmp['field'] = $item2->getDeviceTypeName(1);
+                            } else {
+                                $tmp['field'] = $item2->getTypeName(1);
+                            }
+                        }
+                        //TRANS: %s is the component name
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["old_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_UNLOCK_DEVICE:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            if ($item2 instanceof Item_Devices) {
+                                $tmp['field'] = $item2->getDeviceTypeName(1);
+                            } else {
+                                $tmp['field'] = $item2->getTypeName(1);
+                            }
+                        }
+                        //TRANS: %s is the component name
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["new_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_INSTALL_SOFTWARE:
+                        $tmp['field']  = _n('Software', 'Software', 1);
+                        //TRANS: %s is the software name
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["new_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_UNINSTALL_SOFTWARE:
+                        $tmp['field']  = _n('Software', 'Software', 1);
+                        //TRANS: %s is the software name
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["old_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_DISCONNECT_DEVICE:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            if ($item2 instanceof Item_Devices) {
+                                $tmp['field'] = $item2->getDeviceTypeName(1);
+                            } else {
+                                $tmp['field'] = $item2->getTypeName(1);
+                            }
+                        }
+                        //TRANS: %s is the item name
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["old_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_CONNECT_DEVICE:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            if ($item2 instanceof Item_Devices) {
+                                $tmp['field'] = $item2->getDeviceTypeName(1);
+                            } else {
+                                $tmp['field'] = $item2->getTypeName(1);
+                            }
+                        }
+                        //TRANS: %s is the item name
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["new_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_LOG_SIMPLE_MESSAGE:
+                        $tmp['field']  = "";
+                        $tmp['change'] = htmlescape($log->fields["new_value"]);
+                        break;
+
+                    case Log::HISTORY_ADD_RELATION:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["new_value"])
+                        );
+
+                        if ($log->fields['itemtype'] == 'Ticket') {
+                            /** @var CommonITILObject $item */
+                            if ($log->fields['id_search_option']) { // Recent record - see CommonITILObject::getSearchOptionsActors()
+                                $as = $SEARCHOPTION[$log->fields['id_search_option']]['name'];
+                            } else { // Old record
+                                $is = $isr = $isa = $iso = false;
+                                switch ($log->fields['itemtype_link']) {
+                                    case 'Group':
+                                        $is = 'isGroup';
+                                        break;
+
+                                    case 'User':
+                                        $is = 'isUser';
+                                        break;
+
+                                    case 'Supplier':
+                                        $is = 'isSupplier';
+                                        break;
+                                }
+                                if ($is) {
+                                    $iditem = intval(substr($log->fields['new_value'], strrpos($log->fields['new_value'], '(') + 1)); // This is terrible idea
+                                    $isr = $item->$is(CommonITILActor::REQUESTER, $iditem);
+                                    $isa = $item->$is(CommonITILActor::ASSIGN, $iditem);
+                                    $iso = $item->$is(CommonITILActor::OBSERVER, $iditem);
+                                }
+                                // Simple Heuristic, of course not enough
+                                if ($isr && !$isa && !$iso) {
+                                    $as = _n('Requester', 'Requesters', 1);
+                                } elseif (!$isr && $isa && !$iso) {
+                                    $as = __('Assigned to');
+                                } elseif (!$isr && !$isa && $iso) {
+                                    $as = _n('Observer', 'Observers', 1);
+                                } else {
+                                    // Deleted or Ambiguous
+                                    $as = false;
+                                }
+                            }
+                            if ($as) {
+                                $tmp['change'] = sprintf(
+                                    __s('%1$s: %2$s'),
+                                    htmlescape($action_label),
+                                    sprintf(
+                                        __s('%1$s (%2$s)'),
+                                        htmlescape($log->fields["new_value"]),
+                                        htmlescape($as)
+                                    )
+                                );
+                            } else {
+                                $tmp['change'] = sprintf(
+                                    __s('%1$s: %2$s'),
+                                    htmlescape($action_label),
+                                    htmlescape($log->fields["new_value"])
+                                );
+                            }
+                        }
+                        break;
+
+                    case Log::HISTORY_UPDATE_RELATION:
+                        $linktype_field = explode('#', $log->fields["itemtype_link"]);
+                        $linktype     = $linktype_field[0];
+                        $tmp['field'] = is_a($linktype, CommonGLPI::class, true) ? $linktype::getTypeName() : $linktype;
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            sprintf(
+                                __s('%1$s (%2$s)'),
+                                htmlescape($log->fields["old_value"]),
+                                htmlescape($log->fields["new_value"])
+                            )
+                        );
+                        break;
+
+                    case Log::HISTORY_DEL_RELATION:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["old_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_LOCK_RELATION:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["old_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_UNLOCK_RELATION:
+                        $tmp['field'] = NOT_AVAILABLE;
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            htmlescape($log->fields["new_value"])
+                        );
+                        break;
+
+                    case Log::HISTORY_ADD_SUBITEM:
+                        $tmp['field'] = '';
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            sprintf(
+                                __s('%1$s (%2$s)'),
+                                htmlescape($tmp['field']),
+                                htmlescape($log->fields["new_value"])
+                            )
+                        );
+
+                        break;
+
+                    case Log::HISTORY_UPDATE_SUBITEM:
+                        $tmp['field'] = '';
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        if (empty($log->fields["new_value"])) {
+                            $tmp['change'] = sprintf(
+                                __s('%1$s: %2$s'),
+                                htmlescape($action_label),
+                                htmlescape($tmp['field']),
+                            );
+                        } else {
+                            $tmp['change'] = sprintf(
+                                __s('%1$s: %2$s'),
+                                htmlescape($action_label),
+                                sprintf(
+                                    __s('%1$s (%2$s)'),
+                                    htmlescape($tmp['field']),
+                                    htmlescape($log->fields["new_value"])
+                                )
+                            );
+                        }
+
+                        break;
+
+                    case Log::HISTORY_DELETE_SUBITEM:
+                        $tmp['field'] = '';
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            sprintf(
+                                __s('%1$s (%2$s)'),
+                                htmlescape($tmp['field']),
+                                htmlescape($log->fields["old_value"])
+                            )
+                        );
+                        break;
+
+                    case Log::HISTORY_LOCK_SUBITEM:
+                        $tmp['field'] = '';
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            sprintf(
+                                __s('%1$s (%2$s)'),
+                                htmlescape($tmp['field']),
+                                htmlescape($log->fields["old_value"])
+                            )
+                        );
+                        break;
+
+                    case Log::HISTORY_UNLOCK_SUBITEM:
+                        $tmp['field'] = '';
+                        if ($item2 = getItemForItemtype($log->fields["itemtype_link"])) {
+                            $tmp['field'] = $item2->getTypeName(1);
+                        }
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            sprintf(
+                                __s('%1$s (%2$s)'),
+                                htmlescape($tmp['field']),
+                                htmlescape($log->fields["new_value"])
+                            )
+                        );
+                        break;
+
+                    case Log::HISTORY_SEND_WEBHOOK:
+                        $tmp['change'] = sprintf(
+                            __s('%1$s: %2$s'),
+                            htmlescape($action_label),
+                            sprintf(
+                                __s('%1$s (Status %2$s -> %3$s)'),
+                                htmlescape($log->fields["itemtype_link"]),
+                                htmlescape($log->fields["old_value"]),
+                                htmlescape($log->fields["new_value"])
+                            )
+                        );
+                        break;
+
+                    default:
+                        $fct = [$log->fields['itemtype_link'], 'getHistoryEntry'];
+                        if (
+                            ($log->fields['linked_action'] >= Log::HISTORY_PLUGIN)
+                            && $log->fields['itemtype_link']
+                            && is_callable($fct)
+                        ) {
+                            $tmp['field']  = $log->fields['itemtype_link']::getTypeName(1);
+                            $tmp['change'] = call_user_func($fct, $log->fields);
+                        }
+                        $tmp['display_history'] = !empty($tmp['change']);
                 }
             } else {
-                if (!empty($value)) {
-                    return true;
+                $searchopt = [];
+                $tablename = '';
+                // It's not an internal device
+                foreach ($SEARCHOPTION as $key2 => $val2) {
+                    if ($key2 === $log->fields["id_search_option"]) {
+                        $tmp['field'] =  $val2["name"];
+                        $tablename    =  $val2["table"];
+                        $searchopt    = $val2;
+                        if (isset($val2['datatype'])) {
+                            $tmp['datatype'] = $val2["datatype"];
+                        }
+                        break;
+                    }
+                }
+                if (
+                    ($itemtable == $tablename)
+                    || ($tmp['datatype'] == 'right')
+                ) {
+                    switch ($tmp['datatype']) {
+                        // specific case for text field
+                        case 'text':
+                            $tmp['change'] = __s('Update of the field');
+                            break;
+
+                        default:
+                            $log->fields["old_value"] = RichText::getTextFromHtml($item->getValueToDisplay($searchopt, $log->fields["old_value"]) ?? '', false, true);
+                            $log->fields["new_value"] = RichText::getTextFromHtml($item->getValueToDisplay($searchopt, $log->fields["new_value"]) ?? '', false, true);
+                            break;
+                    }
+                }
+
+                if (empty($tmp['change'])) {
+                    $newval = $log->fields["new_value"];
+                    $oldval = $log->fields["old_value"];
+
+                    if ($log->fields['id_search_option'] == '70') {
+                        $newval_expl = explode(' ', $newval);
+                        $oldval_expl = explode(' ', $oldval);
+
+                        if ($oldval_expl[0] == '&nbsp;') {
+                            $oldval = $log->fields["old_value"];
+                        } else {
+                            $old_iterator = $DBread->request(['FROM' => 'glpi_users', 'WHERE' => ['name' => $oldval_expl[0]]]);
+                            foreach ($old_iterator as $val) {
+                                $oldval = sprintf(
+                                    __('%1$s %2$s'),
+                                    formatUserName(
+                                        $val['id'],
+                                        $oldval_expl[0],
+                                        $val['realname'],
+                                        $val['firstname']
+                                    ),
+                                    ($oldval_expl[1] ?? "0")
+                                );
+                            }
+                        }
+
+                        if ($newval_expl[0] == '&nbsp;') {
+                            $newval = $log->fields["new_value"];
+                        } else {
+                            $new_iterator = $DBread->request(['FROM' => 'glpi_users', 'WHERE' => ['name' => $newval_expl[0]]]);
+                            foreach ($new_iterator as $val) {
+                                $newval = sprintf(
+                                    __('%1$s %2$s'),
+                                    formatUserName(
+                                        $val['id'],
+                                        $newval_expl[0],
+                                        $val['realname'],
+                                        $val['firstname']
+                                    ),
+                                    ($newval_expl[1] ?? "0")
+                                );
+                            }
+                        }
+                    }
+                    $tmp['change'] = sprintf(
+                        __s('Change %1$s to %2$s'),
+                        '<del>' . htmlescape($oldval) . '</del>',
+                        '<ins>' . htmlescape($newval) . '</ins>'
+                    );
                 }
             }
         }
-        return false;
+        return $tmp;
     }
 
     public static function exportData(array $data, string $friendlyName = '', string $userId = '')
@@ -903,9 +1436,10 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
     public static function showFormUser(User $user, bool $forExport = false): bool | array
     {
-        if (isset($_SESSION['accesstransparency']['filters'])) {
-            $filtersprueba = $_SESSION['accesstransparency']['filters'];
-        }
+        global $DB;
+
+        $filters = $_GET['filters'] ?? [];
+        $start = max(0, intval($_GET['start'] ?? 0));
 
         $userid       = $user->getID();
         $realName     = $user->fields['realname'] ?? '';
@@ -918,85 +1452,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $lastnameName = trim($realName . ' ' . $firstName);
         }
         $friendlyName = $user->fields['name'];
-        $result = self::arrayData($user);
+        $result = self::arrayData($user, $filters, $start);
         $allLanguages = $result['allLanguages'] ?? [];
-        $rawCombinedArray = $result['mergedArrays'] ?? [];
-
-        $glpiVersion = GLPI_VERSION;
-        $logsArray = [];
-        $interactionsArray = [];
-        $eventsArray = [];
-        $documentsArray = [];
-
-        foreach ($rawCombinedArray as $row) {
-            if (isset($row['date_mod'])) {
-                $row['source'] = 'log';
-                $row['fecha'] = $row['date_mod'];
-
-                $row['userNameRow'] = '';
-                $row['userIdRow'] = '';
-                if (isset($row['user_name']) && preg_match('/^([^(]+)\s*\((\d+)\)$/', $row['user_name'], $matches)) {
-                    $row['userNameRow'] = trim($matches[1]);
-                    $row['userIdRow'] = $matches[2];
-                }
-
-                $logsArray[] = $row;
-            } elseif (isset($row['message'])) {
-                $row['source'] = 'events';
-                $row['fecha'] = $row['date'];
-
-                $row['userNameRow'] = '';
-                $row['userIdRow'] = '';
-                if (isset($row['user_name']) && preg_match('/^([^(]+)\s*\((\d+)\)$/', $row['user_name'], $matches)) {
-                    $row['userNameRow'] = trim($matches[1]);
-                    $row['userIdRow'] = $matches[2];
-                }
-
-                $eventsArray[] = $row;
-            } elseif (isset($row['path'])) {
-                $row['source'] = 'interaction';
-                $row['fecha'] = $row['date_creation'] ?? '';
-                $row['userNameRow'] = $friendlyName;
-                $row['userIdRow'] = $userid;
-
-                $interactionsArray[] = $row;
-            } elseif (isset($row['id_document'])) {
-                $row['source'] = 'document';
-
-                $documentsArray[] = $row;
-            }
-        }
-
-        foreach ($eventsArray as &$event) {
-            if ($event['type'] == 'ticket') {
-                $event['type'] = 'Ticket';
-            } elseif ($event['type'] == 'documents') {
-                $event['type'] = 'Document';
-            } elseif ($event['type'] == 'profiles') {
-                $event['type'] = 'Profile';
-            }
-        }
-
-        $combinedArray = array_merge($logsArray, $eventsArray, $interactionsArray, $documentsArray);
-        $combinedArray = array_filter($combinedArray, function ($row) {
-            if ($row['source'] === 'log') {
-                $itemtype = $row['itemtype'] ?? null;
-                $items_id = $row['items_id'] ?? null;
-
-                if ($itemtype && $items_id && class_exists($itemtype)) {
-                    $itemObject = $itemtype::getById($items_id);
-                    return $itemObject && $itemObject->canView();
-                }
-                return false;
-            } elseif ($row['source'] === 'events') {
-                return true;
-            } elseif ($row['source'] === 'interaction') {
-                return true;
-            } elseif ($row['source'] === 'document') {
-                return true;
-            }
-            return false;
-        });
+        $combinedArray = $result['mergedArrays'] ?? [];
 
         $terms = ['add', 'delete', 'update', 'purge'];
         $allTranslations = [];
@@ -1016,104 +1474,12 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $allTranslations[$term] = $translations;
         }
 
-        foreach ($combinedArray as &$row) {
-            if ($row['source'] === 'log') {
-                $campo = '';
-                $cambio = '';
-
-                $itemtype = $row['itemtype'] ?? null;
-                $items_id = $row['items_id'] ?? null;
-
-                if ($itemtype && $items_id && class_exists($itemtype)) {
-                    $itemObject = $itemtype::getById($items_id);
-
-                    if ($itemObject) {
-                        $a = Log::getHistoryData($itemObject, 0, 0, ['id' => $row['id']]);
-                        $campo = $a[0]['field'] ?? $campo;
-                        $cambio = $a[0]['change'] ?? '';
-
-                        $row['item_url'] = $itemObject->getLinkURL();
-                    }
-                }
-
-                $row['field'] = $campo;
-                $row['change'] = $cambio;
-                $row['filter'] = '';
-
-                $firstWord = mb_strtolower(strtok(trim($cambio), " "));
-
-                foreach ($terms as $term) {
-                    if (!empty($allTranslations[$term])) {
-                        foreach ($allTranslations[$term] as $lang => $words) {
-                            foreach ($words as $word) {
-                                if (mb_strtolower($word) === $firstWord) {
-                                    $row['filter'] = $term;
-                                    break 3;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        unset($row);
-
         usort($combinedArray, function ($a, $b) {
-            return strtotime($b['fecha']) <=> strtotime($a['fecha']);
+            return strtotime($b['date']) <=> strtotime($a['date']);
         });
 
-        $filters = $_GET['filters'] ?? [];
-        if (empty($filters) && isset($_SESSION['plugin_filters'])) {
-            $filters = $_SESSION['plugin_filters'];
-        }
-        if (isset($filtersprueba)) {
-            $filters = $filtersprueba;
-        }
-
-        $is_filtered = self::hasValidFilters($filters);
-        $showfilters = $is_filtered || (isset($_GET['showfilters']) && $_GET['showfilters'] == 1);
-
-        $documents = [];
-        foreach ($combinedArray as $row) {
-            if ($row['source'] === 'document') {
-                $documents[$row['id_document']] = $row['name'] ?? '';
-            }
-        }
-
-        foreach ($combinedArray as &$row) {
-            if ($row['source'] === 'interaction') {
-                $path = $row['path'] ?? '';
-                preg_match('/docid=([^&]+)/', $path, $matches);
-                $docid = $matches[1] ?? null;
-
-                if ($docid && isset($documents[$docid])) {
-                    $row['name'] = $documents[$docid];
-                } else {
-                    $row['name'] = '';
-                }
-            }
-        }
-        unset($row);
-
-        $service = [];
         $message = [];
-        $type = [];
         $todos = [];
-
-        foreach ($combinedArray as $row) {
-            if ($row['source'] === 'events') {
-                if (!empty($row['service'])) {
-                    $service[$row['service']] = $row['service'];
-                }
-                if (!empty($row['message'])) {
-                    $message[$row['message']] = $row['message'];
-                    $todos[] = $row['message'];
-                }
-                if (!empty($row['type'])) {
-                    $type[$row['type']] = $row['type'];
-                }
-            }
-        }
 
         $result = self::cleanMessages($todos, $nameLastname, $lastnameName, $friendlyName, $userid);
         $allTranslations = [];
@@ -1178,48 +1544,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
             ];
         }
 
-        $itemtypes = [];
-        $fields = [];
         $changes = [];
 
-        foreach ($combinedArray as &$row) {
-            if ($row['source'] === 'log') {
-                if (!empty($row['itemtype'])) {
-                    $itemtypes[$row['itemtype']] = $row['itemtype']::getTypeName(1);
-                }
-                if (!empty($row['field'])) {
-                    $fields[$row['field']] = $row['field'];
-                }
-                if (!empty($row['change'])) {
-                    $changes[$row['change']] = $row['change'];
-                }
-            }
-        }
-
-        $flag = 0;
-        foreach ($combinedArray as &$row) {
-            if ($row['source'] === 'events') {
-                $row['message'] = $allTranslations[$flag];
-                $flag++;
-            }
-        }
-        unset($row);
-
-        if ($is_filtered) {
-            $combinedArray = self::applyFilters($combinedArray, $filters, $itemtypes);
-        }
-
         $total_number = count($combinedArray);
-        $start = max(0, intval($_GET['start'] ?? 0));
-
-        if (isset($_GET['glpilist_limit'])) {
-            $limit = max(1, intval($_GET['glpilist_limit']));
-            $_SESSION['glpilist_limit'] = $limit;
-        } elseif (isset($_SESSION['glpilist_limit'])) {
-            $limit = $_SESSION['glpilist_limit'];
-        } else {
-            $limit = 20;
-        }
 
         foreach ($combinedArray as &$row) {
             if ($row['source'] === 'interaction' && !empty($row['path'])) {
@@ -1235,55 +1562,12 @@ class PluginAccesstransparencyUser extends CommonDBTM
             return $combinedArray;
         }
 
-        $combinedArrayPaged = array_slice($combinedArray, $start, $limit);
-
         $href = Toolbox::getItemTypeSearchURL(Preference::class) . '?forcetab=PluginAccess$1';
-        $additional_params = $is_filtered ? http_build_query(['filters' => $filters]) : "";
 
-        if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
-            $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
-        }else{
-            $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
-        }
-        /*$coreTemplatePath = GLPI_ROOT . '/templates';
-
-        $loader = new FilesystemLoader([
-            $pluginTemplatePath,
-            $coreTemplatePath,
-        ]);*/
-        /*
-        $twig = new Environment($loader);
-
-        $twig->addFunction(new TwigFunction('__', function ($string) {
-            return __($string);
-        }));
-
-        $twig->addFunction(new TwigFunction('php_config', function ($option) {
-            return ini_get($option);
-        }));
-
-        $twig->addFunction(new TwigFunction('user_pref', function ($key, $default = null) {
-            return $_SESSION['glpilist_limit'] ?? $default;
-        }));
-
-        $twig->addFilter(new \Twig\TwigFilter('safe_dom_id', function ($string) {
-            return preg_replace('/[^a-zA-Z0-9_\-]/', '_', $string);
-        }));
-        */
         $twig = TemplateRenderer::getInstance();
         $twig->getEnvironment()->enableAutoReload();
 
-        $fields = array_merge($fields, $service);
         $changes = array_merge($changes, $message);
-        $itemtypes = array_merge($itemtypes, $type);
-        $changes = array_filter($changes, function ($row_value) use ($combinedArrayPaged) {
-            foreach ($combinedArrayPaged as $log_row) {
-                if (isset($log_row['change']) && $row_value == $log_row['change']) {
-                    return true;
-                }
-            }
-            return false;
-        });
 
         $translations_map = [];
 
@@ -1305,24 +1589,81 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $changes = array_keys($translations_map);
 
-        echo $twig->render('@accesstransparency/pages/access.html.twig', [
+        $listitemtype = [];
+        $listfield    = [];
+
+        $sql_itemtypes = $DB->request([
+            'SELECT' => ['itemtype'],
+            'DISTINCT' => true,
+            'FROM'   => 'glpi_logs',
+            'ORDER'  => 'itemtype ASC',
+        ]);
+        foreach ($sql_itemtypes as $it_row) {
+            $it = $it_row['itemtype'];
+            if ($it) {
+                if (class_exists($it) && method_exists($it, 'getTypeName')) {
+                    $listitemtype[$it] = $it::getTypeName(1);
+                    $SEARCHOPTION = SearchOption::getOptionsForItemtype($it);
+                    foreach ($SEARCHOPTION as $key => $val) {
+                        if (is_array($val) && is_int($key)) {
+                            $listfield[$key] = $val['name'];
+                        }
+                    }
+                } else {
+                    $listitemtype[$it] = $it;
+                }
+            }
+        }
+        $listitemtype['file_interaction'] = __('File open');
+
+
+
+        $login = $user->fields['name'];
+        $surName = $user->fields['realname'];
+        $firstName = $user->fields['firstname'];
+        $condition = [
+            'OR' => [
+                ['user_name' => ['LIKE', $login . '%(' . $userid . ')']],
+            ]
+        ];
+        if (!empty($surName)) {
+            $condition['OR'][] = ['user_name' => ['LIKE', $surName . ' %(' . $userid . ')']];
+        }
+        if (!empty($firstName)) {
+            $condition['OR'][] = ['user_name' => ['LIKE', $firstName . ' %(' . $userid . ')']];
+        }
+        $total_log = countElementsInTable('glpi_logs', $condition);
+        $condition = [
+            'OR' => [
+                'message' => ['LIKE', '%' . $login . '%'],
+            ],
+        ];
+        if (!empty($surName)) {
+            $condition['OR'][] = ['message' => ['LIKE', '%' . $surName . '%']];
+        }
+        if (!empty($firstName)) {
+            $condition['OR'][] = ['message' => ['LIKE', '%' . $firstName . '%']];
+        }
+        $total_events = countElementsInTable('glpi_events', $condition);
+        $total_interactions = countElementsInTable(PluginAccesstransparencyUserinteractions::getTable(), ['users_id' => $userid]);
+        
+        $total_number = max($total_log, $total_events, $total_interactions);
+        $filtered_number = count($combinedArray);
+
+        $twig->display('@accesstransparency/pages/access.html.twig', [
             'userId'            => $userid,
             'friendlyName'      => $friendlyName,
-            'combined'          => $combinedArrayPaged,
-            'itemtypes'         => $itemtypes,
-            'fields'            => $fields,
+            'combined'          => $combinedArray,
+            'itemtypes'         => $listitemtype,
+            'fields'            => $listfield,
             'changes'           => $changes,
             'filters'           => $filters,
-            'isFiltered'        => $is_filtered,
-            'showfilters'       => $showfilters,
             'total_number'      => $total_number,
-            'limit'             => $limit,
             'start'             => $start,
             'href'              => $href,
-            'additional_params' => $additional_params,
             'is_tab'            => true,
-            'glpi_version'      => $glpiVersion,
             'translations_map'  => $translations_map,
+            'filtered_number'   => $filtered_number,
         ]);
         return true;
     }

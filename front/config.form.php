@@ -29,10 +29,9 @@
  * -------------------------------------------------------------------------
  */
 
-include('../../../inc/includes.php');
 // Check if plugin is activated...
 if (!Plugin::isPluginActive('accesstransparency')) {
-    Html::displayNotFoundError();
+    throw new \Glpi\Exception\Http\NotFoundHttpException();
 }
 
 Session::checkRight('config', UPDATE);

@@ -12,7 +12,8 @@ document.addEventListener('click', (event) => {
     type: 'POST',
     data: {
       action: 'register',
-      ruta: href
+      ruta: href,
+      documents_id: href.match(docidRegex)[0].split('=')[1]
     },
     success: function (response) {
       console.log(response);
