@@ -131,7 +131,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         if (count($filters) > 0) {
             if (!empty($filters['date'])) {
-               $sql_log['WHERE']['date_mod'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
+                $sql_log['WHERE']['date_mod'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
             }
             if (isset($filters['itemtypes']) && count($filters['itemtypes']) > 0) {
                 $sql_log['WHERE']['itemtype'] = $filters['itemtypes'];
@@ -191,7 +191,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         if (count($filters) > 0) {
             if (!empty($filters['date'])) {
-               $sql_events['WHERE']['date'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
+                $sql_events['WHERE']['date'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
             }
             if (isset($filters['itemtypes']) && count($filters['itemtypes']) > 0) {
                 $sql_events['WHERE']['type'] = $filters['itemtypes'];
@@ -233,7 +233,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         if (count($filters) > 0) {
             if (!empty($filters['date'])) {
-               $sql_interaction['WHERE']['date_creation'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
+                $sql_interaction['WHERE']['date_creation'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
             }
         }
         if (isset($filters['itemtypes']) && count($filters['itemtypes']) > 0 && !in_array('file_interaction', $filters['itemtypes'])) {
@@ -252,7 +252,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                     'itemtype' => __('File open'),
                     'items_id' => '',
                     'field' => '',
-                    'change' => __('Document') . ': '.Document::getFriendlyNameById($interaction['documents_id']),
+                    'change' => __('Document') . ': ' . Document::getFriendlyNameById($interaction['documents_id']),
                     'source' => 'interaction',
                 ];
             }
@@ -305,27 +305,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
     {
         return array_filter($data, function ($row) use ($filters, $itemtypes) {
 
-            if (!empty($filters['keyword'])) {
-                $keyword = mb_strtolower(trim($filters['keyword']));
-                $found = false;
-                foreach ($row as $clave => $valor) {
-                    if ($clave === 'itemtype' && !empty($valor)) {
-                        $label = $itemtypes[$valor] ?? '';
-                        if (mb_strpos(mb_strtolower($label), $keyword) !== false) {
-                            $found = true;
-                            break;
-                        }
-                    }
-                    if (is_scalar($valor) && mb_strpos(mb_strtolower((string) $valor), $keyword) !== false) {
-                        $found = true;
-                        break;
-                    }
-                }
-                if (!$found) {
-                    return false;
-                }
-            }
-
             if (!empty($filters['fecha'])) {
                 $filterTimestamp = strtotime($filters['fecha']);
                 $rowTimestamp = isset($row['fecha']) ? strtotime($row['fecha']) : false;
@@ -352,12 +331,13 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
 
             if (!empty($filters['field']) && is_array($filters['field'])) {
+                $fieldFilter = $filters['field'];
                 if ($row['source'] === 'log') {
-                    if (!in_array($row['field'] ?? '', $filters['field'])) {
+                    if (!in_array($row['field'] ?? '', $fieldFilter)) {
                         return false;
                     }
                 } elseif ($row['source'] === 'events') {
-                    if (!in_array($row['service'] ?? '', $filters['field'])) {
+                    if (!in_array($row['service'] ?? '', $fieldFilter)) {
                         return false;
                     }
                 }
@@ -465,7 +445,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                             sprintf(
                                 __s('%1$s by %2$s'),
                                 htmlescape($log->fields["old_value"]),
-                                htmlescape($log->fields[ "new_value"])
+                                htmlescape($log->fields["new_value"])
                             )
                         );
                         break;
@@ -910,7 +890,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
         }
 
-        $export = new class ($data, $friendlyName, $userId, $documents) implements ExportToCsvInterface {
+        $export = new class($data, $friendlyName, $userId, $documents) implements ExportToCsvInterface {
             private $data;
             private $friendlyName;
             private $userId;
@@ -926,7 +906,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
             public function getFileHeader(): array
             {
-                return ['ID', 'Date', 'User', 'User ID', 'Itemtype', 'Field', 'Changes'];
+                return ['ID', 'Date', 'User', 'User_ID', 'Itemtype', 'Field', 'Changes'];
             }
 
             public function getFileContent(): array
@@ -935,7 +915,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 foreach ($this->data as $row) {
                     $source = $row['source'] ?? '';
                     $id = $row['id'] ?? $row['id_document'] ?? '';
-                    $date = isset($row['fecha']) ? date('Y-m-d H:i', strtotime($row['fecha'])) : '';
+                    $date = isset($row['date']) ? date('Y-m-d H:i', strtotime($row['date'])) : '';
                     $userName = $this->friendlyName;
                     $userIdRow = $this->userId;
 
@@ -953,24 +933,41 @@ class PluginAccesstransparencyUser extends CommonDBTM
                             ];
                             break;
                         case 'events':
-                            $message = preg_replace('#</?(ins|del)>#i', '', $row['message']['translation'] ?? '');
+                            $change = preg_replace('#</?(ins|del)>#i', '', $row['change'] ?? '');
                             $rows[] = [
                                 $id,
                                 $date,
                                 $userName,
                                 $userIdRow,
-                                $row['type'] ?? '',
-                                $row['service'] ?? '',
-                                $message,
+                                $row['itemtype'] ?? '',
+                                $row['field'] ?? '',
+                                $change,
                             ];
                             break;
                         case 'interaction':
-                            $interactionId = $row['id_doc'] ?? '';
+                            $interactionId = $row['id'] ?? $row['id_doc'] ?? '';
                             $docName = '';
-                            if (isset($row['path']) && preg_match('/docid=([^&]+)/', $row['path'], $matches)) {
-                                $docid = $matches[1];
-                                if (!empty($this->documents[$docid])) {
-                                    $docName = $this->documents[$docid];
+
+                            if (!empty($interactionId)) {
+                                global $DB;
+
+                                $iterator = $DB->request([
+                                    'SELECT' => ['*'],
+                                    'FROM'   => 'glpi_plugin_accesstransparency_userinteractions',
+                                    'WHERE'  => ['id' => $interactionId]
+                                ]);
+
+                                $array = iterator_to_array($iterator);
+                                $path = '';
+
+                                if (!empty($array)) {
+                                    $firstRow = reset($array);
+                                    $path = $firstRow['path'] ?? '';
+                                    $docid = '';
+                                    if (preg_match('/docid=([0-9]+)/', $path, $matches)) {
+                                        $docid = (int) $matches[1];
+                                        $docName = Document::getFriendlyNameById($docid);
+                                    }
                                 }
                             }
                             $rows[] = [
@@ -978,7 +975,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                                 $date,
                                 $userName,
                                 $userIdRow,
-                                'Interactions',
+                                'File_Open',
                                 '',
                                 $docName,
                             ];
@@ -1085,7 +1082,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             'glpi_phones'              => 'name',
             'glpi_assets_assets'       => 'name',
             'glpi_cartridgeitems'      => 'name',
-            'glpi_consumables'         => 'name',
+            'glpi_consumableitems'     => 'name',
             'glpi_racks'               => 'name',
             'glpi_enclosures'          => 'name',
             'glpi_pdus'                => 'name',
@@ -1278,7 +1275,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
     }
 
-
     private static function parsePoFile(string $filePath): array
     {
         $translations = [];
@@ -1332,7 +1328,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             return '';
         }
     }
-
 
     private static function parsePoFileForFollowing(string $filePath): array
     {
@@ -1502,6 +1497,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
                     $filter = 'active';
                 } elseif (stripos($msg['longest_fragment'], 'install') !== false || stripos($msg['longest_fragment'], 'uninstall') !== false) {
                     $filter = 'install';
+                } elseif (stripos($msg['longest_fragment'], 'failed login') !== false || stripos($msg['longest_fragment'], 'log in') !== false) {
+                    $filter = 'failed log in';
                 } elseif (stripos($msg['longest_fragment'], 'login') !== false || stripos($msg['longest_fragment'], 'log in') !== false) {
                     $filter = 'log in';
                 }
@@ -1587,6 +1584,23 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
         }
 
+        foreach ($combinedArray as &$row) {
+            if ($row['source'] === 'events') {
+                if (isset($row['itemtype']) && is_string($row['itemtype'])) {
+                    $row['itemtype'] =
+                        mb_strtoupper(mb_substr($row['itemtype'], 0, 1), 'UTF-8') .
+                        mb_substr($row['itemtype'], 1, null, 'UTF-8');
+                }
+
+                if (isset($row['field']) && is_string($row['field'])) {
+                    $row['field'] =
+                        mb_strtoupper(mb_substr($row['field'], 0, 1), 'UTF-8') .
+                        mb_substr($row['field'], 1, null, 'UTF-8');
+                }
+            }
+        }
+        unset($row);
+
         $changes = array_keys($translations_map);
 
         $listitemtype = [];
@@ -1616,8 +1630,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
         $listitemtype['file_interaction'] = __('File open');
 
-
-
         $login = $user->fields['name'];
         $surName = $user->fields['realname'];
         $firstName = $user->fields['firstname'];
@@ -1646,7 +1658,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
         $total_events = countElementsInTable('glpi_events', $condition);
         $total_interactions = countElementsInTable(PluginAccesstransparencyUserinteractions::getTable(), ['users_id' => $userid]);
-        
+
         $total_number = max($total_log, $total_events, $total_interactions);
         $filtered_number = count($combinedArray);
 

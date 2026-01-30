@@ -121,7 +121,6 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         }
         $coreTemplatePath   = GLPI_ROOT . '/templates';
 
-
         if (isset($_SESSION['accesstransparency']['log_retention_minutes'])) {
             $value = $_SESSION['accesstransparency']['log_retention_minutes'];
 

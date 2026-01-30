@@ -90,7 +90,17 @@
 						{% endfor %}
 					</select>
 				</td>
-				<td></td>
+				<td>
+					<select name="filters[change][]" class="form-select logs-filter-select-multiple" multiple>
+						<option value=""></option>
+						{% set change_options = ['add', 'delete', 'update', 'purge', 'active', 'impersonate', 'install', 'log in', 'failed log in'] %}
+						{% for change in change_options %}
+						<option value="{{ change }}" {{ change in filters.change ? 'selected' : '' }}>
+							{{ change|capitalize }}
+						</option>
+						{% endfor %}
+					</select>
+				</td>
 				<td></td>
 			</tr>
 			{% endif %}
