@@ -73,23 +73,26 @@
 					) }}
 				</td>
 				<td>
-					<select name="filters[itemtypes][]" class="form-select logs-filter-select-multiple" multiple>
-						{% for value, itemtype in itemtypes %}
-							<option value="{{ value|verbatim_value }}" {{ filters['itemtypes'] is defined and value in filters['itemtypes'] ? 'selected' : '' }}>
-								{{ itemtype|verbatim_value }}
-							</option>
+					<select name="filters[itemtype][]" class="form-select logs-filter-select-multiple" multiple>
+						<option value=""></option>
+						<option
+						value="__interaction__"
+						{{ '__interaction__' in filters.itemtype ? 'selected' : '' }}
+						>File open</option>
+						{% for key, label in itemtypes %}
+						<option value="{{ key }}" {{ key in filters.itemtype ? 'selected' : '' }}>{{ label }}</option>
 						{% endfor %}
 					</select>
-				</td>
-				<td>
-					<select name="filters[fields][]" class="form-select logs-filter-select-multiple" multiple>
-						{% for value, field in fields %}
-							<option value="{{ value|verbatim_value }}" {{ filters['fields'] is defined and value in filters['fields'] ? 'selected' : '' }}>
-								{{ field|verbatim_value }}
-							</option>
+					</td>
+
+					<td>
+					<select name="filters[field][]" class="form-select logs-filter-select-multiple" multiple>
+						<option value=""></option>
+						{% for field in fields %}
+						<option value="{{ field }}" {{ field in filters.field ? 'selected' : '' }}>{{ field }}</option>
 						{% endfor %}
 					</select>
-				</td>
+					</td>
 				<td>
 					<select name="filters[change][]" class="form-select logs-filter-select-multiple" multiple>
 						<option value=""></option>
