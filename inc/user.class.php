@@ -115,17 +115,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
         }
 
-        /*foreach ($filters as $key => $value) {
-            var_dump('filters:' . $key . ' + ');
-            if (is_array($value)) {
-                foreach ($value as $v) {
-                    var_dump($v . ', ');
-                }
-            } else {
-                var_dump('no array:' . $value);
-            }
-        }*/
-
         $logWhere         = !empty($logConditions) ? '(' . implode(' OR ', $logConditions) . ')' : '';
         $eventWhere       = !empty($eventConditions) ? '(' . implode(' OR ', $eventConditions) . ')' : '';
         $interactionWhere = "`users_id` = $userid";
@@ -321,97 +310,45 @@ class PluginAccesstransparencyUser extends CommonDBTM
         ];
     }
 
-    public static function applyFilters(array $data, array $filters, array $itemtypes, array $fields, array $translations_map = []): array
-    {
-        return array_filter($data, function ($row) use ($filters, $itemtypes, $fields) {
+public static function applyFilters(array $data, array $filters): array
+{
+    $filters = array_values($filters); // normaliza índices
 
-            if (!empty($filters['fecha'])) {
-                $filterTimestamp = strtotime($filters['fecha']);
-                $rowTimestamp = isset($row['fecha']) ? strtotime($row['fecha']) : false;
-                if (!$rowTimestamp || date('Y-m-d', $rowTimestamp) != date('Y-m-d', $filterTimestamp)) {
-                    return false;
-                }
-            }
-
-            if (!empty($filters['itemtype']) && is_array(value: $filters['itemtype'])) {
-                $itemtypeFilter = $filters['itemtype'];
-                if ($row['source'] === 'interaction') {
-                    if (!in_array('__interaction__', $itemtypeFilter)) {
-                        return false;
-                    }
-                } elseif ($row['source'] === 'log') {
-                    if (!in_array($row['itemtype'] ?? '', $itemtypeFilter)) {
-                        return false;
-                    }
-                } elseif ($row['source'] === 'events') {
-                    if (!in_array($row['itemtype'] ?? '', $itemtypeFilter)) {
-                        return false;
-                    }
-                }
-            }
-
-            if (!empty($filters['field']) && is_array($filters['field'])) {
-                if ($row['source'] === 'log') {
-                    if (!in_array($row['field'] ?? '', $filters['field'])) {
-                        return false;
-                    }
-                } elseif ($row['source'] === 'events') {
-                    if (!in_array($row['field'] ?? '', $filters['field'])) {
-                        return false;
-                    }
-                } elseif ($row['source'] === 'interaction') {
-                    return false;
-                }
-            }
-
-            if (!empty($filters['change']) && is_array($filters['change'])) {
-                foreach ($filters['change'] as $filterValue) {
-                    $rowValue = null;
-                    if ($row['source'] === 'log') {
-                        $rowValue = $row['filter'] ?? null;
-                    } elseif ($row['source'] === 'events') {
-                        $rowValue = $row['message']['filter'] ?? null;
-                    }
-
-                    $found = false;
-
-                    if (is_array($rowValue)) {
-                        foreach ($rowValue as $v) {
-                            if ($v === $filterValue) {
-                                $found = true;
-                                break;
-                            }
-                        }
-                    } else {
-                        if ($rowValue === $filterValue) {
-                            $found = true;
-                        }
-                    }
-
-                    if (!$found) {
-                        return false;
-                    }
-                }
-            }
+    return array_filter($data, function ($row) use ($filters) {
+        // Si no hay filtros, mantenemos todo
+        if (empty($filters)) {
             return true;
-        });
-    }
+        }
 
-    private static function hasValidFilters(array $filters): bool
-    {
-        foreach ($filters as $key => $value) {
-            if (is_array($value)) {
-                if (count(array_filter($value)) > 0) {
-                    return true;
-                }
-            } else {
-                if (!empty($value)) {
-                    return true;
+        $rowValue = null;
+
+        // Obtener valor según el source
+        if ($row['source'] === 'log') {
+            $rowValue = $row['filter'] ?? null;
+        } elseif ($row['source'] === 'events') {
+            $rowValue = $row['filter'] ?? null;
+        }
+
+        if ($rowValue === null) {
+            return false; // sin valor, no coincide
+        }
+
+        // Aseguramos que rowValue sea un array para recorrerlo
+        $valuesToCheck = is_array($rowValue) ? $rowValue : [$rowValue];
+
+        // Recorremos todos los valores y filtros
+        foreach ($valuesToCheck as $v) {
+            foreach ($filters as $f) {
+                if (stripos($v, $f) !== false) { // coincidencia parcial, insensible a mayúsculas
+                    return true; // encontramos una coincidencia
                 }
             }
         }
-        return false;
-    }
+
+        return false; // si no hubo coincidencias
+    });
+}
+
 
     public static function getHistory($item, int $logId): array
     {
@@ -1575,9 +1512,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
                     $filter = 'active';
                 } elseif (stripos($msg['longest_fragment'], 'install') !== false || stripos($msg['longest_fragment'], 'uninstall') !== false) {
                     $filter = 'install';
-                } elseif (stripos($msg['longest_fragment'], 'failed login') !== false || stripos($msg['longest_fragment'], 'log in') !== false) {
-                    $filter = 'failed log in';
-                } elseif (stripos($msg['longest_fragment'], 'login') !== false || stripos($msg['longest_fragment'], 'log in') !== false) {
+                } elseif (stripos($msg['longest_fragment'], 'failed') !== false || stripos($msg['longest_fragment'], 'failed') !== false) {
+                    $filter = 'failed';
+                } elseif (stripos($msg['longest_fragment'], 'log in') !== false || stripos($msg['longest_fragment'], 'log in') !== false) {
                     $filter = 'log in';
                 }
             }
@@ -1630,6 +1567,11 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
         }
         unset($row);
+
+        if (isset($filters['change'])) {
+            var_dump($filters['change']);
+            $combinedArray = self::applyFilters($combinedArray, $filters['change']);
+        }
 
         foreach ($combinedArray as &$row) {
             if ($row['source'] === 'interaction' && !empty($row['path'])) {
