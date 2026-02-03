@@ -177,6 +177,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
             } else {
                 $eventWhere = "LOWER(`service`) IN ('" . implode("','", $fields) . "')";
             }
+        } if(empty($filters['itemtype']) && !empty($filters['field'])){
+            $includeInteraction = false;
         }
 
         $logWhere   = !empty($logWhere) ? "WHERE $logWhere" : '';
