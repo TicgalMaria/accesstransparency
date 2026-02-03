@@ -1564,7 +1564,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         unset($row);
 
         if (isset($filters['change'])) {
-            var_dump($filters['change']);
             $combinedArray = self::applyFilters($combinedArray, $filters['change']);
         }
 
