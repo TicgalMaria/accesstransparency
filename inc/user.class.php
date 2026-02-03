@@ -1622,7 +1622,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $result = self::arrayData($user);
         $total_number = $result['count'];
         $itemtypesRaw = $result['itemtypes'];
-        $fields_log = $result['fields'];
+        //$fields_log = $result['fields'];
         $fields_event = $result['events'];
         $filtered_number = count($combinedArray);
         $itemtypes = [];
@@ -1634,12 +1634,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 $itemtypes[$id] = $name;
             } else {
                 $itemtypes[$id] = __($name);
-            }
-        }
-
-        foreach ($fields_log as $options) {
-            foreach ($options as $label) {
-                $allFields[] = $label;
             }
         }
 
