@@ -1583,11 +1583,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             return $combinedArray;
         }
 
-        $href = Toolbox::getItemTypeSearchURL(Preference::class) . '?forcetab=PluginAccess$1';
-
-        $twig = TemplateRenderer::getInstance();
-        $twig->getEnvironment()->enableAutoReload();
-
         $itemtypes = [];
         $fields = [];
         $exclude = 'File Open';
@@ -1637,8 +1632,10 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 $itemtypes[$id] = __($name);
             }
         }
+        
+        $href = Toolbox::getItemTypeSearchURL(Preference::class) . '?forcetab=PluginAccess$1';
 
-        $twig->display('@accesstransparency/pages/access.html.twig', [
+        TemplateRenderer::getInstance()->display('@accesstransparency/pages/access.html.twig', [
             'userId'            => $userid,
             'friendlyName'      => $friendlyName,
             'combined'          => $combinedArray,
