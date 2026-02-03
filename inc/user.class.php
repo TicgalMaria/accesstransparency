@@ -78,7 +78,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $_SESSION['glpicsrf_token'] = Session::getNewCSRFToken();
 
             $result = self::arrayData($user);
-            $number = count($result['mergedArrays']);
+            $number = $result['count'];
             return self::createTabEntry(self::getTypeName(1), $number);
         }
         return '';
@@ -97,134 +97,206 @@ class PluginAccesstransparencyUser extends CommonDBTM
         /** @var \DBmysql $DB */
         global $DB;
 
-        $userid     = $user->getID();
-        $login      = $user->fields['name'];
-        $surName    = $user->fields['realname'];
-        $firstName  = $user->fields['firstname'];
+        $userid    = $user->getID();
+        $login     = $user->fields['name'];
+        $surName   = $user->fields['realname'];
+        $firstName = $user->fields['firstname'];
+        $table     = PluginAccesstransparencyUserinteractions::getTable();
+        $limit     = $_SESSION['glpilist_limit'] ?? 20;
+        $list      = [];
 
-        $table = PluginAccesstransparencyUserinteractions::getTable();
-        $list  = [];
-
-        $sql_log = [
-            'SELECT' => ['id', 'itemtype', 'items_id', 'user_name', 'date_mod'],
-            'FROM'   => 'glpi_logs',
-            'WHERE'  => ['OR' => []],
-            'LIMIT'  => $_SESSION['glpilist_limit'],
-            'START'  => $start,
-            'ORDER'  => ['date_mod DESC'],
-        ];
+        $logConditions   = [];
+        $eventConditions = [];
 
         foreach ([$login, $firstName, $surName] as $name) {
             if (!empty($name)) {
-                $sql_log['WHERE']['OR'][] = ['user_name' => ['LIKE', '%' . $name . '%(' . $userid . ')']];
+                $logConditions[]   = "`user_name` LIKE '%$name%($userid)%'";
+                $eventConditions[] = "`message` LIKE '%$name%'";
             }
         }
 
+        /*foreach ($filters as $key => $value) {
+            var_dump('filters:' . $key . ' + ');
+            if (is_array($value)) {
+                foreach ($value as $v) {
+                    var_dump($v . ', ');
+                }
+            } else {
+                var_dump('no array:' . $value);
+            }
+        }*/
+
+        $logWhere         = !empty($logConditions) ? '(' . implode(' OR ', $logConditions) . ')' : '';
+        $eventWhere       = !empty($eventConditions) ? '(' . implode(' OR ', $eventConditions) . ')' : '';
+        $interactionWhere = "`users_id` = $userid";
+
         if (!empty($filters['date'])) {
-            $sql_log['WHERE']['date_mod'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
-        }
-        if (!empty($filters['itemtypes'])) {
-            $sql_log['WHERE']['itemtype'] = $filters['itemtypes'];
-        }
-        if (!empty($filters['fields'])) {
-            $sql_log['WHERE']['id_search_option'] = $filters['fields'];
+            $date = date('Y-m-d', strtotime($filters['date']));
+
+            if (!empty($logWhere)) {
+                $logWhere = "($logWhere) AND `date_mod` LIKE '$date%'";
+            } else {
+                $logWhere = "`date_mod` LIKE '$date%'";
+            }
+
+            if (!empty($eventWhere)) {
+                $eventWhere = "($eventWhere) AND `date` LIKE '$date%'";
+            } else {
+                $eventWhere = "`date` LIKE '$date%'";
+            }
+
+            $interactionWhere .= " AND DATE(`date_creation`) = '$date'";
         }
 
-        $logsIterator = $DB->request($sql_log);
-        foreach ($logsIterator as $log) {
+        $includeInteraction = false;
+
+        if (!empty($filters['itemtype'])) {
+            $itemtypes = array_map('strtolower', (array)$filters['itemtype']);
+
+            if (in_array('__interaction__', $itemtypes)) {
+                $includeInteraction = true;
+            }
+
+            if (!empty($logWhere)) {
+                $logWhere = "($logWhere) AND LOWER(`itemtype`) IN ('" . implode("','", $itemtypes) . "')";
+            } else {
+                $logWhere = "LOWER(`itemtype`) IN ('" . implode("','", $itemtypes) . "')";
+            }
+
+            if (!empty($eventWhere)) {
+                $eventWhere = "($eventWhere) AND LOWER(`type`) IN ('" . implode("','", $itemtypes) . "')";
+            } else {
+                $eventWhere = "LOWER(`type`) IN ('" . implode("','", $itemtypes) . "')";
+            }
+        }
+
+        if (!empty($filters['field'])) {
+            $fields = array_map(function ($v) {
+                return strtolower($v);
+            }, (array)$filters['field']);
+
+            if (!empty($logWhere)) {
+                $logWhere = "($logWhere) AND LOWER(`id_search_option`) IN ('" . implode("','", $fields) . "')";
+            } else {
+                $logWhere = "LOWER(`id_search_option`) IN ('" . implode("','", $fields) . "')";
+            }
+
+            if (!empty($eventWhere)) {
+                $eventWhere = "($eventWhere) AND LOWER(`service`) IN ('" . implode("','", $fields) . "')";
+            } else {
+                $eventWhere = "LOWER(`service`) IN ('" . implode("','", $fields) . "')";
+            }
+        }
+
+        $logWhere   = !empty($logWhere) ? "WHERE $logWhere" : '';
+        $eventWhere = !empty($eventWhere) ? "WHERE $eventWhere" : '';
+        if (!$includeInteraction) {
+            $interactionWhere = '';
+        } else {
+            $interactionWhere = !empty($interactionWhere) ? "WHERE $interactionWhere" : '';
+        }
+
+        $sql = "
+        (SELECT id, itemtype, items_id, user_name AS name, date_mod AS date, 'log' AS source
+        FROM glpi_logs $logWhere)
+        UNION ALL
+        (SELECT id, type AS itemtype, message AS items_id, service AS name, date, 'events' AS source
+        FROM glpi_events $eventWhere)
+        " . ($includeInteraction ? "
+        UNION ALL
+        (SELECT id AS id_doc, 'File open' AS itemtype, documents_id AS items_id, '' AS name, date_creation AS date, 'interaction' AS source
+        FROM `$table` $interactionWhere)
+        " : "") . "
+        ORDER BY date DESC
+        LIMIT $start, $limit
+        ";
+
+        $iterator = $DB->doQuery($sql);
+        while ($row = $iterator->fetch_assoc()) {
             $data = [
-                'id' => $log['id'],
-                'date' => $log['date_mod'],
-                'itemtype' => $log['itemtype'],
-                'items_id' => $log['items_id'],
-                'field' => '',
-                'change' => '',
-                'source' => 'log',
+                'id'       => $row['id'] ?? $row['id_doc'],
+                'date'     => date('Y-m-d H:i', strtotime($row['date'])),
+                'itemtype' => $row['itemtype'],
+                'items_id' => $row['items_id'],
+                'field'    => '',
+                'change'   => '',
+                'source'   => $row['source'],
             ];
 
-            if (class_exists($log['itemtype']) && method_exists($log['itemtype'], 'getById')) {
-                if ($item = $log['itemtype']::getById($log['items_id'])) {
-                    $data['url'] = $item->getLinkURL();
-                    $loginfo = self::getHistory($item, $log['id']);
+            if ($row['source'] === 'log' && class_exists($row['itemtype']) && method_exists($row['itemtype'], 'getById')) {
+                if ($item = $row['itemtype']::getById($row['items_id'])) {
+                    $data['url']    = $item->getLinkURL();
+                    $loginfo        = self::getHistory($item, $row['id']);
                     $data['field']  = $loginfo['field'];
                     $data['change'] = $loginfo['change'];
                 }
+            } elseif ($row['source'] === 'events') {
+                $data['field']  = $row['name'];
+                $data['change'] = $row['items_id'];
+            } elseif ($row['source'] === 'interaction') {
+                $data['change'] = __('Document') . ': ' . Document::getFriendlyNameById($row['items_id']);
             }
+
             $list[] = $data;
         }
 
-        $sql_events = [
-            'SELECT' => ['id', 'type', 'date', 'service', 'message'],
-            'FROM'   => 'glpi_events',
-            'WHERE'  => ['OR' => []],
-            'LIMIT'  => $_SESSION['glpilist_limit'],
-            'START'  => $start,
-            'ORDER'  => ['date DESC'],
-        ];
+        $logsTotal         = $DB->doQuery("SELECT COUNT(*) AS total FROM glpi_logs $logWhere")->fetch_assoc()['total'] ?? 0;
+        $eventsTotal       = $DB->doQuery("SELECT COUNT(*) AS total FROM glpi_events $eventWhere")->fetch_assoc()['total'] ?? 0;
+        $interactionsTotal = $DB->doQuery("SELECT COUNT(*) AS total FROM `$table` $interactionWhere")->fetch_assoc()['total'] ?? 0;
+        $count = $logsTotal + $eventsTotal + $interactionsTotal;
 
-        foreach ([$login, $firstName, $surName] as $name) {
-            if (!empty($name)) {
-                $sql_events['WHERE']['OR'][] = ['message' => ['LIKE', '%' . $name . '%']];
+        $sql_filters = "
+        (SELECT DISTINCT itemtype, id_search_option, 'log' AS source FROM glpi_logs $logWhere)
+        UNION ALL
+        (SELECT DISTINCT type AS itemtype, service AS items_id, 'events' AS source FROM glpi_events $eventWhere)
+        UNION ALL
+        (SELECT DISTINCT 'File open' AS itemtype, NULL AS items_id, 'interaction' AS source FROM `$table` $interactionWhere)";
+
+        $iterator2 = $DB->doQuery($sql_filters);
+
+        $itemtypes = [];
+        $fields    = [];
+        $events    = [];
+
+        while ($row = $iterator2->fetch_assoc()) {
+            $itemtype = $row['itemtype'] ??  null;
+            if (empty($itemtype)) {
+                continue;
+            }
+
+            if ($itemtype !== 'Plugin' && str_starts_with($itemtype, 'Plugin')) {
+                continue;
+            }
+            $itemtypes[$itemtype] = $itemtype;
+
+            switch ($row['source']) {
+                case 'events':
+                    $id = $row['id_search_option'] ?? null;
+                    if (!empty($id)) {
+                        $events[$id] = true;
+                    }
+                    break;
+                case 'log':
+                    $searchId = $row['id_search_option'] ?? null;
+                    if (is_numeric($searchId)) {
+                        $searchOptions = Search::getOptions($itemtype);
+                        if (!empty($searchOptions[$searchId]['name'])) {
+                            $fields[$itemtype][$searchId] = __($searchOptions[$searchId]['name']);
+                        }
+                    }
+                    break;
             }
         }
 
-        if (!empty($filters['date'])) {
-            $sql_events['WHERE']['date'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
-        }
-        if (!empty($filters['itemtypes'])) {
-            $sql_events['WHERE']['type'] = $filters['itemtypes'];
-        }
-        if (!empty($filters['fields'])) {
-            $sql_events['WHERE']['service'] = $filters['fields'];
-        }
+        $events = array_keys($events);
 
-        $eventsIterator = $DB->request($sql_events);
-        foreach ($eventsIterator as $event) {
-            $list[] = [
-                'id' => $event['id'],
-                'date' => $event['date'],
-                'itemtype' => $event['type'],
-                'items_id' => '',
-                'field' => $event['service'],
-                'change' => $event['message'],
-                'source' => 'events',
-            ];
-        }
-
-        $sql_interaction = [
-            'SELECT' => ['id as id_doc', 'path', 'documents_id', 'date_creation'],
-            'FROM'   => $table,
-            'WHERE'  => ['users_id' => $userid],
-            'LIMIT'  => $_SESSION['glpilist_limit'],
-            'START'  => $start,
-            'ORDER'  => ['date_creation DESC'],
-        ];
-
-        if (!empty($filters['date'])) {
-            $sql_interaction['WHERE']['date_creation'] = ['LIKE', date('Y-m-d', strtotime($filters['date'])) . '%'];
-        }
-
-        $interactionIterator = $DB->request($sql_interaction);
-        foreach ($interactionIterator as $interaction) {
-            $list[] = [
-                'id' => $interaction['id_doc'],
-                'date' => $interaction['date_creation'],
-                'itemtype' => __('File open'),
-                'items_id' => '',
-                'field' => '',
-                'change' => __('Document') . ': ' . Document::getFriendlyNameById($interaction['documents_id']),
-                'source' => 'interaction',
-            ];
-        }
-
-        $configIterator = $DB->request([
+        $configIterator  = $DB->request([
             'SELECT' => ['value'],
             'FROM'   => 'glpi_configs',
             'WHERE'  => ['name' => 'language'],
         ]);
-
         $defaultLanguage = $configIterator->current()['value'] ?? '';
-        $values = [];
+        $values          = [];
         $languageIterator = $DB->request([
             'SELECT' => ['old_value', 'new_value'],
             'FROM'   => 'glpi_logs',
@@ -239,28 +311,13 @@ class PluginAccesstransparencyUser extends CommonDBTM
             array_unshift($allLanguages, $defaultLanguage);
         }
 
-        $itemtypes = [];
-        $fields    = [];
-
-        foreach ($list as &$row) {
-            if (!empty($row['itemtype']) && is_string($row['itemtype'])) {
-                $row['itemtype'] = ucwords(mb_strtolower($row['itemtype'], 'UTF-8'));
-                if ($row['itemtype'] !== 'File Open') {
-                    $itemtypes[$row['itemtype']] = $row['itemtype'];
-                }
-            }
-            if (!empty($row['field']) && is_string($row['field'])) {
-                $row['field'] = ucwords(mb_strtolower($row['field'], 'UTF-8'));
-                $fields[$row['field']] = $row['field'];
-            }
-        }
-        unset($row);
-
         return [
             'allLanguages' => $allLanguages,
             'mergedArrays' => $list,
             'itemtypes'    => $itemtypes,
             'fields'       => $fields,
+            'count'        => $count,
+            'events'       => $events,
         ];
     }
 
@@ -1430,21 +1487,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
         return $msgid;
     }
 
-    /**
-     * MySQL query warnings: SQL: SELECT `id`, `itemtype`, `items_id`, `user_name`, `date_mod` 
-     * FROM `glpi_logs` WHERE ((`user_name` LIKE 'glpi%(2)') OR (`user_name` LIKE 'maria%(2)') 
-     * OR (`user_name` LIKE 'x%(2)')) AND `id_search_option` IN ('') ORDER BY `date_mod` 
-     * DESC LIMIT 750 Warnings: 1292: Truncated incorrect DECIMAL value: '' 
-     * at DBmysql.php line 399 in ./src/DBmysql.php at line 399 */
-
     public static function showFormUser(User $user, bool $forExport = false): bool | array
     {
-        global $DB;
-
-        if (isset($_SESSION['accesstransparency']['filters'])) {
-            $filtersprueba = $_SESSION['accesstransparency']['filters'];
-        }
-
         $filters = $_GET['filters'] ?? [];
         $start = max(0, intval($_GET['start'] ?? 0));
 
@@ -1462,7 +1506,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $result = self::arrayData($user, $filters, $start);
         $allLanguages = $result['allLanguages'] ?? [];
         $combinedArray = $result['mergedArrays'] ?? [];
-        $total_number = count($combinedArray);
         $terms = ['add', 'delete', 'update', 'purge'];
         $allTranslations = [];
 
@@ -1588,19 +1631,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
         unset($row);
 
-        $filters = $_GET['filters'] ?? [];
-        if (empty($filters) && isset($_SESSION['plugin_filters'])) {
-            $filters = $_SESSION['plugin_filters'];
-        }
-        if (isset($filtersprueba)) {
-            $filters = $filtersprueba;
-        }
-
-        $is_filtered = self::hasValidFilters($filters);
-        $showfilters = $is_filtered || (isset($_GET['showfilters']) && $_GET['showfilters'] == 1);
-
-        $total_number = count($combinedArray);
-
         foreach ($combinedArray as &$row) {
             if ($row['source'] === 'interaction' && !empty($row['path'])) {
                 $value = null;
@@ -1652,18 +1682,42 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
         unset($row);
 
-        if ($is_filtered) {
-            $combinedArray = self::applyFilters($combinedArray, $filters, $fields, $itemtypes);
+        $result = self::arrayData($user);
+        $total_number = $result['count'];
+        $itemtypesRaw = $result['itemtypes'];
+        $fields_log = $result['fields'];
+        $fields_event = $result['events'];
+        $filtered_number = count($combinedArray);
+
+        $itemtypes = [];
+        $allFields = [];
+
+        foreach ($itemtypesRaw as $id => $name) {
+            if ($id === '__interaction__') {
+                $itemtypes[$id] = __('File open');
+            } elseif ($name == 'Plugin') {
+                $itemtypes[$id] = $name;
+            } else {
+                $itemtypes[$id] = __($name);
+            }
         }
 
-        $filtered_number = count($combinedArray);
+        foreach ($fields_log as $options) {
+            foreach ($options as $label) {
+                $allFields[] = $label;
+            }
+        }
+
+        $fields_array = array_merge($allFields, $fields_event);
+        $fields_array = array_map('ucfirst', $fields_array);
+        $fields_array = array_unique($fields_array);
 
         $twig->display('@accesstransparency/pages/access.html.twig', [
             'userId'            => $userid,
             'friendlyName'      => $friendlyName,
             'combined'          => $combinedArray,
             'itemtypes'         => $itemtypes,
-            'fields'            => $fields,
+            'fields'            => $fields_array,
             'filters'           => $filters,
             'total_number'      => $total_number,
             'start'             => $start,
