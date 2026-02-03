@@ -104,6 +104,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $table     = PluginAccesstransparencyUserinteractions::getTable();
         $limit     = $_SESSION['glpilist_limit'] ?? 20;
         $list      = [];
+        $_SESSION['accesstransparency']['filters'] = $filters;
 
         $logConditions   = [];
         $eventConditions = [];
@@ -1511,9 +1512,11 @@ class PluginAccesstransparencyUser extends CommonDBTM
                     $filter = 'active';
                 } elseif (stripos($msg['longest_fragment'], 'install') !== false || stripos($msg['longest_fragment'], 'uninstall') !== false) {
                     $filter = 'install';
-                } elseif (stripos($msg['longest_fragment'], 'failed') !== false || stripos($msg['longest_fragment'], 'failed') !== false) {
+                } elseif (stripos($msg['longest_fragment'], 'impersona') !== false) {
+                    $filter = 'impersonate';
+                } elseif (stripos($msg['longest_fragment'], 'failed') !== false) {
                     $filter = 'failed';
-                } elseif (stripos($msg['longest_fragment'], 'log in') !== false || stripos($msg['longest_fragment'], 'log in') !== false) {
+                } elseif (stripos($msg['longest_fragment'], 'log in') !== false) {
                     $filter = 'log in';
                 }
             }
