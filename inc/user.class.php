@@ -157,6 +157,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
             } else {
                 $eventWhere = "LOWER(`type`) IN ('" . implode("','", $itemtypes) . "')";
             }
+        } else {
+            $includeInteraction = true;
         }
 
         if (!empty($filters['field'])) {
