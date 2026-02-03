@@ -310,45 +310,40 @@ class PluginAccesstransparencyUser extends CommonDBTM
         ];
     }
 
-public static function applyFilters(array $data, array $filters): array
-{
-    $filters = array_values($filters); // normaliza índices
+    public static function applyFilters(array $data, array $filters): array
+    {
+        $filters = array_values($filters);
 
-    return array_filter($data, function ($row) use ($filters) {
-        // Si no hay filtros, mantenemos todo
-        if (empty($filters)) {
-            return true;
-        }
+        return array_filter($data, function ($row) use ($filters) {
+            if (empty($filters)) {
+                return true;
+            }
 
-        $rowValue = null;
+            $rowValue = null;
 
-        // Obtener valor según el source
-        if ($row['source'] === 'log') {
-            $rowValue = $row['filter'] ?? null;
-        } elseif ($row['source'] === 'events') {
-            $rowValue = $row['filter'] ?? null;
-        }
+            if ($row['source'] === 'log') {
+                $rowValue = $row['filter'] ?? null;
+            } elseif ($row['source'] === 'events') {
+                $rowValue = $row['filter'] ?? null;
+            }
 
-        if ($rowValue === null) {
-            return false; // sin valor, no coincide
-        }
+            if ($rowValue === null) {
+                return false;
+            }
 
-        // Aseguramos que rowValue sea un array para recorrerlo
-        $valuesToCheck = is_array($rowValue) ? $rowValue : [$rowValue];
+            $valuesToCheck = is_array($rowValue) ? $rowValue : [$rowValue];
 
-        // Recorremos todos los valores y filtros
-        foreach ($valuesToCheck as $v) {
-            foreach ($filters as $f) {
-                if (stripos($v, $f) !== false) { // coincidencia parcial, insensible a mayúsculas
-                    return true; // encontramos una coincidencia
+            foreach ($valuesToCheck as $v) {
+                foreach ($filters as $f) {
+                    if (stripos($v, $f) !== false) {
+                        return true;
+                    }
                 }
             }
-        }
 
-        return false; // si no hubo coincidencias
-    });
-}
-
+            return false;
+        });
+    }
 
     public static function getHistory($item, int $logId): array
     {
@@ -1630,9 +1625,7 @@ public static function applyFilters(array $data, array $filters): array
         $fields_log = $result['fields'];
         $fields_event = $result['events'];
         $filtered_number = count($combinedArray);
-
         $itemtypes = [];
-        $allFields = [];
 
         foreach ($itemtypesRaw as $id => $name) {
             if ($id === '__interaction__') {
@@ -1650,16 +1643,12 @@ public static function applyFilters(array $data, array $filters): array
             }
         }
 
-        $fields_array = array_merge($allFields, $fields_event);
-        $fields_array = array_map('ucfirst', $fields_array);
-        $fields_array = array_unique($fields_array);
-
         $twig->display('@accesstransparency/pages/access.html.twig', [
             'userId'            => $userid,
             'friendlyName'      => $friendlyName,
             'combined'          => $combinedArray,
             'itemtypes'         => $itemtypes,
-            'fields'            => $fields_array,
+            'fields'            => $fields_event,
             'filters'           => $filters,
             'total_number'      => $total_number,
             'start'             => $start,
