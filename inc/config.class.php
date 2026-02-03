@@ -114,9 +114,9 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         global $DB;
 
         $config = self::getInstance();
-        if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
+        if (file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
             $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
-        }else{
+        } else {
             $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
         }
         $coreTemplatePath   = GLPI_ROOT . '/templates';
@@ -145,40 +145,15 @@ class PluginAccesstransparencyConfig extends CommonDBTM
                 INFO,
             );
         }
-/*
-        $loader = new FilesystemLoader([$pluginTemplatePath, $coreTemplatePath]);
-        $twig = new Environment($loader);
 
-        $twig->addFunction(new TwigFunction('idor_token', function ($name = '_glpi_csrf_token') {
-            $token = Session::getNewCSRFToken();
-            return new Markup('<input type="hidden" name="' . htmlspecialchars($name) . '" value="' . htmlspecialchars($token) . '">', 'UTF-8');
-        }));
+        TemplateRenderer::getInstance()->display(
+            '@accesstransparency/pages/config.html.twig',
+            [
+                'item' => $config,
+                'log_retention_minutes' => $config->getLogRetentionMinutes(),
+            ]
+        );
 
-        $twig->addFunction(new TwigFunction('call', function ($fn, $args = []) {
-            return is_callable($fn) ? call_user_func_array($fn, $args) : null;
-        }));
-
-        $twig->addFunction(new TwigFunction('session', fn($key) => null));
-        $twig->addFunction(new TwigFunction('render_illustration', fn($item = null, $options = []) => '<!-- illustration -->'));
-        $twig->addFunction(new TwigFunction('__', fn($text, $domain = '') => $text));
-        $twig->addFunction(new TwigFunction('_x', fn($text, $context = '') => $text));
-        $twig->addFunction(new TwigFunction('csrf_token', function ($token_id = '_glpi_csrf_token') {
-            return new Markup('<input type="hidden" name="_glpi_csrf_token" value="' . Session::getNewCSRFToken() . '">', 'UTF-8');
-        }));
-        $twig->addFunction(new TwigFunction('get_current_locale', fn() => 'en_US'));
-        $twig->addFunction(new TwigFunction('config', fn($key, $default = null) => $default));
-
-        $twig->addFilter(new TwigFilter('safe_html', fn($string) => $string));
-        $twig->addFilter(new TwigFilter('safe_dom_id', fn($value) => $value));
-        $twig->addFilter(new TwigFilter('itemtype_dropdown', fn($value) => $value));
-        $twig->addFilter(new TwigFilter('itemtype_form_path', fn($value) => '#'));
-        */
-        $twig = TemplateRenderer::getInstance();
-        $twig->getEnvironment()->enableAutoReload();
-        echo $twig->render('@accesstransparency/pages/config.html.twig', [
-            'item' => $config,
-            'log_retention_minutes' => $config->getLogRetentionMinutes(),
-        ]);
         return true;
     }
 

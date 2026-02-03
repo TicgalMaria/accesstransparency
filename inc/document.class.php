@@ -130,37 +130,14 @@ class PluginAccesstransparencyDocument extends CommonDBTM
         }
         $coreTemplatePath = GLPI_ROOT . '/templates';
 
-        /*
-        $loader = new FilesystemLoader([
-            $pluginTemplatePath,
-            $coreTemplatePath,
-        ]);
-        */
-        /*
-        $twig = new Environment($loader);
 
-        $twig->addFunction(new TwigFunction('__', function ($string) {
-            return __($string);
-        }));
-
-        $twig->addFunction(new TwigFunction('php_config', function ($option) {
-            return ini_get($option);
-        }));
-
-        $twig->addFunction(new TwigFunction('user_pref', function ($key, $default = null) {
-            return $_SESSION['glpilist_limit'] ?? $default;
-        }));
-
-        $twig->addFilter(new \Twig\TwigFilter('safe_dom_id', function ($string) {
-            return preg_replace('/[^a-zA-Z0-9_\-]/', '_', $string);
-        }));
-        */
-        $twig = TemplateRenderer::getInstance();
-        $twig->getEnvironment()->enableAutoReload();
-        echo $twig->render('@accesstransparency/pages/document.html.twig', [
-            'combined' => $result,
-            'documentId'   => $document_id,
-        ]);
+        TemplateRenderer::getInstance()->display(
+            '@accesstransparency/pages/document.html.twig',
+            [
+                'combined'    => $result,
+                'documentId'  => $document_id,
+            ]
+        );
 
         return true;
     }
