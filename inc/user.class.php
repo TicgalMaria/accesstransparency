@@ -1,9 +1,8 @@
 <?php
-
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
- * Copyright (C) 2025 by the TICGAL Team.
+ * Copyright (C) 2026 by the TICGAL Team.
  * https://www.tic.gal
  * -------------------------------------------------------------------------
  * LICENSE
@@ -21,11 +20,11 @@
  * -------------------------------------------------------------------------
  * @package   accesstransparency
  * @author    the TICGAL team
- * @copyright Copyright (c) 2025 TICGAL team
+ * @copyright Copyright (c) 2026 TICGAL team
  * @license   AGPL License 3.0 or (at your option) any later version
  *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
  * @link      https://www.tic.gal
- * @since     2025
+ * @since     2026
  * -------------------------------------------------------------------------
  */
 
@@ -84,9 +83,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
         return '';
     }
 
-    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
+    public static function displayTabContentForItem(CommonGLPI $item,$tabnum = 1,$withtemplate = 0): bool 
     {
-        if ($item::getType() === User::getType() && Session::haveRight(self::$rightname, READ)) {
+        if ($item instanceof User && Session::haveRight(self::$rightname, READ)) {
             return self::showFormUser($item);
         }
         return false;
@@ -178,7 +177,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
             } else {
                 $eventWhere = "LOWER(`service`) IN ('" . implode("','", $fields) . "')";
             }
-        } if(empty($filters['itemtype']) && !empty($filters['field'])){
+        }
+        if (empty($filters['itemtype']) && !empty($filters['field'])) {
             $includeInteraction = false;
         }
 
@@ -199,11 +199,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
         " . ($includeInteraction ? "
         UNION ALL
         (SELECT id AS id_doc, 'File open' AS itemtype, documents_id AS items_id, '' AS name, date_creation AS date, 'interaction' AS source
-        FROM `$table` $interactionWhere)
-        " : "") . "
-        ORDER BY date DESC
-        LIMIT $start, $limit
-        ";
+        FROM `$table` $interactionWhere)" : "") . "
+        ORDER BY date DESC LIMIT $start, $limit";
 
         $iterator = $DB->doQuery($sql);
         while ($row = $iterator->fetch_assoc()) {
@@ -1268,7 +1265,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
     }
 
-
     private static function parsePoFile(string $filePath): array
     {
         $translations = [];
@@ -1322,7 +1318,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             return '';
         }
     }
-
 
     private static function parsePoFileForFollowing(string $filePath): array
     {
@@ -1401,6 +1396,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
         return $translations;
     }
+
     public static function getFollowingTranslationLineExact(string $msgid, string $translationFile): string
     {
         $filePath = GLPI_ROOT . '/locales/' . $translationFile . '.po';
@@ -1484,7 +1480,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             return strtotime($b['date']) <=> strtotime($a['date']);
         });
 
-        $message = [];
         $todos = [];
         foreach ($combinedArray as $row) {
             if ($row['source'] === 'events') {
@@ -1623,7 +1618,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $result = self::arrayData($user);
         $total_number = $result['count'];
         $itemtypesRaw = $result['itemtypes'];
-        //$fields_log = $result['fields'];
         $fields_event = $result['events'];
         $filtered_number = count($combinedArray);
         $itemtypes = [];
@@ -1637,9 +1631,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 $itemtypes[$id] = __($name);
             }
         }
-        
-        $href = Toolbox::getItemTypeSearchURL(Preference::class) . '?forcetab=PluginAccess$1';
 
+        $href = Toolbox::getItemTypeSearchURL(Preference::class) . '?forcetab=PluginAccess$1';
         TemplateRenderer::getInstance()->display('@accesstransparency/pages/access.html.twig', [
             'userId'            => $userid,
             'friendlyName'      => $friendlyName,

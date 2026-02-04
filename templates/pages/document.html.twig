@@ -1,34 +1,36 @@
+{#
+# -------------------------------------------------------------------------
+# AccessTransparency plugin for GLPI
+# Copyright (C) 2026 by the TICGAL Team.
+# https://www.tic.gal
+# -------------------------------------------------------------------------
+# LICENSE
+# This file is part of the AccessTransparency plugin.
+# AccessTransparency plugin is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+# AccessTransparency plugin is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with AccessTransparency. If not, see <http://www.gnu.org/licenses/>.
+# -------------------------------------------------------------------------
+# @package   accesstransparency
+# @author    the TICGAL team
+# @copyright Copyright (c) 2026 TICGAL team
+# @license   AGPL License 3.0 or (at your option) any later version
+#            http://www.gnu.org/licenses/agpl-3.0-standalone.html
+# @link      https://www.tic.gal
+# @since     2026
+# -------------------------------------------------------------------------
+#}
+
 {% set version_parts = glpi_version|split('.') %}
 {% set major_version = version_parts[0]|default(0) %}
 
-
 <div class="table-responsive">
-{#
-  <div class="input-group" style="max-width: 300px;">
-    <form method="GET" action="#" id="searchForm" class="d-flex align-items-center" style="max-width: 300px;">
-      <input type="hidden" name="id" value="{{ documentId }}" />
-      <input
-        type="text"
-        name="filters[keyword]"
-        value="{{ filters.keyword|default('') }}"
-        class="form-control"
-        placeholder="{{ __('Search or filter results') }}"
-      />
-      <button class="btn btn-outline-secondary" type="submit">
-        <i class="ti ti-search"></i>
-        <span>{{ __('Search') }}</span>
-      </button>
-    </form>
-  </div>
-
-  {{ include('components/pager.html.twig', {
-    href: href,
-    additional_params: additional_params,
-    start: start,
-    count: total_number,
-    is_tab: is_tab
-  }) }}
-#}
   <table class="table table-hover">
     <thead>
       <tr>
@@ -66,8 +68,6 @@
     {% include 'components/dropdown/limit.html.twig' %}
   </div>
 </div>
-
-
 
 <script type="text/javascript">
   $(function () {

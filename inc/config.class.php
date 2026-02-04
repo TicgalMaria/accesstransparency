@@ -1,9 +1,8 @@
 <?php
-
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
- * Copyright (C) 2025 by the TICGAL Team.
+ * Copyright (C) 2026 by the TICGAL Team.
  * https://www.tic.gal
  * -------------------------------------------------------------------------
  * LICENSE
@@ -21,20 +20,15 @@
  * -------------------------------------------------------------------------
  * @package   accesstransparency
  * @author    the TICGAL team
- * @copyright Copyright (c) 2025 TICGAL team
+ * @copyright Copyright (c) 2026 TICGAL team
  * @license   AGPL License 3.0 or (at your option) any later version
  *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
  * @link      https://www.tic.gal
- * @since     2025
+ * @since     2026
  * -------------------------------------------------------------------------
  */
 
 use Glpi\Application\View\TemplateRenderer;
-use Twig\Loader\FilesystemLoader;
-use Twig\Environment;
-use Twig\TwigFunction;
-use Twig\TwigFilter;
-use Twig\Markup;
 
 class PluginAccesstransparencyConfig extends CommonDBTM
 {
@@ -114,12 +108,6 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         global $DB;
 
         $config = self::getInstance();
-        if (file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
-            $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
-        } else {
-            $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
-        }
-        $coreTemplatePath   = GLPI_ROOT . '/templates';
 
         if (isset($_SESSION['accesstransparency']['log_retention_minutes'])) {
             $value = $_SESSION['accesstransparency']['log_retention_minutes'];
@@ -138,12 +126,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
             }
 
             $config->setLogRetentionMinutes($value);
-
-            Session::addMessageAfterRedirect(
-                __('Configuration saved successfully', 'accesstransparency'),
-                true,
-                INFO,
-            );
+            Session::addMessageAfterRedirect(__('Configuration saved successfully', 'accesstransparency'),true,INFO,);
         }
 
         TemplateRenderer::getInstance()->display(

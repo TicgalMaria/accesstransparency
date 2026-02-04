@@ -1,9 +1,8 @@
 <?php
-
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
- * Copyright (C) 2025 by the TICGAL Team.
+ * Copyright (C) 2026 by the TICGAL Team.
  * https://www.tic.gal
  * -------------------------------------------------------------------------
  * LICENSE
@@ -21,11 +20,11 @@
  * -------------------------------------------------------------------------
  * @package   accesstransparency
  * @author    the TICGAL team
- * @copyright Copyright (c) 2025 TICGAL team
+ * @copyright Copyright (c) 2026 TICGAL team
  * @license   AGPL License 3.0 or (at your option) any later version
  *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
  * @link      https://www.tic.gal
- * @since     2025
+ * @since     2026
  * -------------------------------------------------------------------------
  */
 
