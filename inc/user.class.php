@@ -250,7 +250,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 continue;
             }
 
-            if ($itemtype !== 'Plugin' && str_starts_with($itemtype, 'Plugin')) {
+            if ($itemtype !== 'Plugin' && str_contains($itemtype, 'Plugin')) {
                 continue;
             }
             $itemtypes[$itemtype] = $itemtype;
