@@ -61,13 +61,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string|array
     {
         if ($item::getType() === User::getType() && Session::haveRight(self::$rightname, READ)) {
-
             if (isset($_GET['filters'])) {
                 $_SESSION['accesstransparency']['filters'] = $_GET['filters'];
-            }
-
-            if (isset($_GET['clear_filters'])) {
-                unset($_SESSION['accesstransparency']['filters']);
             }
 
             /** @var User $user */
@@ -101,9 +96,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $surName   = $user->fields['realname'];
         $firstName = $user->fields['firstname'];
         $table     = PluginAccesstransparencyUserinteractions::getTable();
+        $_SESSION['accesstransparency']['filters'] = $filters;
         $limit     = $_SESSION['glpilist_limit'] ?? 20;
         $list      = [];
-        $_SESSION['accesstransparency']['filters'] = $filters;
 
         $logConditions   = [];
         $eventConditions = [];
@@ -361,7 +356,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $tmp['datatype']        = "";
 
         if ($log->getFromDB($logId)) {
-
             // This is an internal device ?
             if ($log->fields["linked_action"]) {
                 $action_label = Log::getLinkedActionLabel($log->fields["linked_action"]);

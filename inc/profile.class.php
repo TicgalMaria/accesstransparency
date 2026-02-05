@@ -44,6 +44,11 @@ class PluginAccesstransparencyProfile extends Profile
         return '';
     }
 
+    public static function getIcon(): string
+    {
+        return 'fa-solid fa-cube';
+    }
+
     /**
      * {@inheritDoc}
      */
