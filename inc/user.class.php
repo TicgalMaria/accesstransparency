@@ -1527,8 +1527,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 } else {
                     $translation = self::editMessage($msgid, '');
                 }
-            } elseif ($msg['ip'] != null) {
-                $translation = self::editMessage($msgid, $friendlyName, $msg['ip'] ?? '');
+            } elseif (!empty($msg['ip'])) {
+                $translation = self::editMessage($msgid, $friendlyName, $msg['ip']);
             } elseif ($msg['plugin'] != null) {
                 $translation = self::editMessage($msgid, $msg['plugin'] ?? '', $friendlyName);
             } elseif ($msg['second_user'] != null) {
