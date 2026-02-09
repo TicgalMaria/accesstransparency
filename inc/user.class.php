@@ -1503,7 +1503,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                     $filter = 'install';
                 } elseif (stripos($msg['longest_fragment'], 'impersona') !== false) {
                     $filter = 'impersonate';
-                } elseif (stripos($msg['longest_fragment'], 'failed') !== false) {
+                } elseif (stripos(strtolower($msg['longest_fragment']), 'failed') !== false) {
                     $filter = 'failed';
                 } elseif (stripos($msg['longest_fragment'], 'log in') !== false) {
                     $filter = 'log in';
