@@ -28,17 +28,15 @@
  * -------------------------------------------------------------------------
  */
 
-ob_clean();
 ob_start();
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
 
 if (!defined('GLPI_ROOT')) {
     define('GLPI_ROOT', '../../..');
 }
-
 include_once GLPI_ROOT . '/inc/includes.php';
 
 if (!Plugin::isPluginActive('accesstransparency')) {
@@ -48,9 +46,7 @@ if (!Plugin::isPluginActive('accesstransparency')) {
 Session::checkLoginUser();
 
 $userId = isset($_GET['id']) ? (string) $_GET['id'] : '';
-if ($userId === '') {
-    die("Invalid user ID");
-} elseif ($userId <= 0) {
+if ($userId === '' || $userId <= 0) {
     die("Invalid user ID");
 }
 
@@ -59,9 +55,9 @@ if (!$user->getFromDB((int) $userId)) {
     die("User not found");
 }
 
-if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php')) {
+if (file_exists(GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php')) {
     require_once GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php';
-}else{
+} else {
     require_once GLPI_ROOT . '/marketplace/accesstransparency/inc/user.class.php';
 }
 
@@ -69,15 +65,14 @@ $combinedArray = PluginAccesstransparencyUser::showFormUser($user, true);
 $friendlyName = $user->getFriendlyName();
 
 foreach ($combinedArray as &$row) {
-    if (isset($row['userNameRow'])) {
-        $row['userNameRow'] = $user->fields['name'];
-    }
-
     if (!empty($row['change'])) {
+        $row['change'] = preg_replace('#<div\b[^>]*>.*?</div>#si', '', $row['change']);
         $row['change'] = preg_replace('#</?(ins|del)>#i', '', $row['change']);
+        $row['change'] = trim($row['change']);
     }
 }
 unset($row);
 
-PluginAccesstransparencyUser::exportData($combinedArray, $user->fields['name'], $userId);
+ob_clean();
+PluginAccesstransparencyUser::exportData($combinedArray, $friendlyName, $userId);
 exit;
