@@ -1,4 +1,5 @@
 <?php
+
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
@@ -78,7 +79,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         return '';
     }
 
-    public static function displayTabContentForItem(CommonGLPI $item,$tabnum = 1,$withtemplate = 0): bool 
+    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
     {
         if ($item instanceof User && Session::haveRight(self::$rightname, READ)) {
             return self::showFormUser($item);
@@ -1090,7 +1091,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         foreach ($messages as $message) {
             $data = [
-                'ip' => null,
+                'user_ip' => null,
                 'acting_user' => $friendlyName,
                 'second_user' => null,
                 'plugin' => null,
@@ -1105,8 +1106,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $clean = $message;
 
             if (preg_match('/\b\d{1,3}(?:\.\d{1,3}){3}\b/', $clean, $ipMatch)) {
-                $data['ip'] = $ipMatch[0];
-                $clean = str_replace($data['ip'], '', $clean);
+                $data['user_ip'] = $ipMatch[0];
+                $clean = str_replace($data['user_ip'], '', $clean);
             }
 
             foreach ([$nameLastname, $lastnameName, $friendlyName, $userid] as $term) {
@@ -1432,6 +1433,12 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $friendlyName = $user->fields['name'];
         $result = self::arrayData($user, $filters, $start);
         $allLanguages = $result['allLanguages'] ?? [];
+        if (count($allLanguages) === 1 && $allLanguages[0] == 'en_GB') {
+            $allLanguages[1] = 'en_US';
+        } elseif (count($allLanguages) === 1 && $allLanguages[0] != 'en_GB') {
+            $allLanguages[1] = 'en_GB';
+        }
+
         $combinedArray = $result['mergedArrays'] ?? [];
         $terms = ['add', 'delete', 'update', 'purge'];
         $allTranslations = [];
@@ -1527,8 +1534,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 } else {
                     $translation = self::editMessage($msgid, '');
                 }
-            } elseif (!empty($msg['ip'])) {
-                $translation = self::editMessage($msgid, $friendlyName, $msg['ip']);
+            } 
+            if (!empty($msg['user_ip'])) {
+                $translation = self::editMessage($msgid, $friendlyName, $msg['user_ip']);
             } elseif ($msg['plugin'] != null) {
                 $translation = self::editMessage($msgid, $msg['plugin'] ?? '', $friendlyName);
             } elseif ($msg['second_user'] != null) {

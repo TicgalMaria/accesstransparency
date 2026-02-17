@@ -42,16 +42,15 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         $default_charset    = DBConnection::getDefaultCharset();
         $default_collation  = DBConnection::getDefaultCollation();
-        $default_key_sign   = DBConnection::getDefaultPrimaryKeySignOption();
 
         $table = self::getTable();
         if (!$DB->tableExists($table)) {
             $migration->displayMessage("Installing $table");
             $query = "CREATE TABLE IF NOT EXISTS `$table` (
-                `id` INT {$default_key_sign} NOT NULL AUTO_INCREMENT,
-                `users_id` INT {$default_key_sign} NOT NULL default 0,
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `users_id` INT UNSIGNED NOT NULL default 0,
                 `path` varchar(255),
-                `documents_id` INT {$default_key_sign} NOT NULL default 0,
+                `documents_id` INT UNSIGNED NOT NULL default 0,
                 `date_creation` TIMESTAMP NULL DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 KEY `users_id` (`users_id`),
