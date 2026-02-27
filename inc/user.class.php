@@ -106,10 +106,11 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         foreach ([$login, $firstName, $surName] as $name) {
             if (!empty($name)) {
-                $logConditions[]   = "`user_name` LIKE '%$name%($userid)%'";
                 $eventConditions[] = "`message` LIKE '%$name%'";
             }
         }
+
+        $logConditions[]   = "`users_id` = '$userid'";
 
         $logWhere         = !empty($logConditions) ? '(' . implode(' OR ', $logConditions) . ')' : '';
         $eventWhere       = !empty($eventConditions) ? '(' . implode(' OR ', $eventConditions) . ')' : '';
@@ -119,7 +120,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $date = date('Y-m-d', strtotime($filters['date']));
 
             if (!empty($logWhere)) {
-                $logWhere = "($logWhere) AND `date_mod` LIKE '$date%'";
+                $logWhere = "($logWhere) AND `date_creation` LIKE '$date%'";
             } else {
                 $logWhere = "`date_mod` LIKE '$date%'";
             }
@@ -163,7 +164,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }, (array)$filters['field']);
 
             if (!empty($logWhere)) {
-                $logWhere = "($logWhere) AND LOWER(`id_search_option`) IN ('" . implode("','", $fields) . "')";
+                $logWhere = "($logWhere) AND LOWER(`field`) IN ('" . implode("','", $fields) . "')";
             } else {
                 $logWhere = "LOWER(`id_search_option`) IN ('" . implode("','", $fields) . "')";
             }
@@ -187,16 +188,16 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
 
         $sql = "
-        (SELECT id, itemtype, items_id, user_name AS name, date_mod AS date, 'log' AS source
-        FROM glpi_logs $logWhere)
-        UNION ALL
-        (SELECT id, type AS itemtype, message AS items_id, service AS name, date, 'events' AS source
-        FROM glpi_events $eventWhere)
-        " . ($includeInteraction ? "
-        UNION ALL
-        (SELECT id AS id_doc, 'File open' AS itemtype, documents_id AS items_id, '' AS name, date_creation AS date, 'interaction' AS source
-        FROM `$table` $interactionWhere)" : "") . "
-        ORDER BY date DESC LIMIT $start, $limit";
+    (SELECT id, itemtype, users_id AS name, date_creation AS date, field, message, 'log' AS source
+    FROM glpi_plugin_accesstransparency_logevents $logWhere)
+    UNION ALL
+    (SELECT id, type AS itemtype, '' AS name,  date, service AS field, message, 'events' AS source
+    FROM glpi_events $eventWhere)
+    " . ($includeInteraction ? "
+    UNION ALL
+    (SELECT id AS id_doc, 'File open' AS itemtype, '' AS name, date_creation AS date, documents_id AS field, '' AS message, 'interaction' AS source
+    FROM `$table` $interactionWhere)" : "") . "
+    ORDER BY date DESC LIMIT $start, $limit";
 
         $iterator = $DB->doQuery($sql);
         while ($row = $iterator->fetch_assoc()) {
@@ -204,40 +205,34 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 'id'       => $row['id'] ?? $row['id_doc'],
                 'date'     => date('Y-m-d H:i', strtotime($row['date'])),
                 'itemtype' => $row['itemtype'],
-                'items_id' => $row['items_id'],
-                'field'    => '',
-                'change'   => '',
+                'field'    => $row['field'],
+                'change'   => $row['message'],
                 'source'   => $row['source'],
             ];
 
             if ($row['source'] === 'log' && class_exists($row['itemtype']) && method_exists($row['itemtype'], 'getById')) {
-                if ($item = $row['itemtype']::getById($row['items_id'])) {
-                    $data['url']    = $item->getLinkURL();
-                    $loginfo        = self::getHistory($item, $row['id']);
-                    $data['field']  = $loginfo['field'];
-                    $data['change'] = $loginfo['change'];
-                }
+
             } elseif ($row['source'] === 'events') {
-                $data['field']  = $row['name'];
-                $data['change'] = $row['items_id'];
+                $data['field']  = $row['field'];
             } elseif ($row['source'] === 'interaction') {
-                $data['change'] = __('Document') . ': ' . Document::getFriendlyNameById($row['items_id']);
+                $data['field'] = '';
+                $data['change'] = __('Document') . ': ' . Document::getFriendlyNameById($row['field']);
             }
 
             $list[] = $data;
         }
 
-        $logsTotal         = $DB->doQuery("SELECT COUNT(*) AS total FROM glpi_logs $logWhere")->fetch_assoc()['total'] ?? 0;
+        $logsTotal         = $DB->doQuery("SELECT COUNT(*) AS total FROM glpi_plugin_accesstransparency_logevents $logWhere")->fetch_assoc()['total'] ?? 0;
         $eventsTotal       = $DB->doQuery("SELECT COUNT(*) AS total FROM glpi_events $eventWhere")->fetch_assoc()['total'] ?? 0;
         $interactionsTotal = $DB->doQuery("SELECT COUNT(*) AS total FROM `$table` $interactionWhere")->fetch_assoc()['total'] ?? 0;
         $count = $logsTotal + $eventsTotal + $interactionsTotal;
 
         $sql_filters = "
-        (SELECT DISTINCT itemtype, id_search_option, 'log' AS source FROM glpi_logs $logWhere)
+        (SELECT DISTINCT itemtype, field, 'log' AS source FROM glpi_plugin_accesstransparency_logevents $logWhere)
         UNION ALL
-        (SELECT DISTINCT type AS itemtype, service AS items_id, 'events' AS source FROM glpi_events $eventWhere)
+        (SELECT DISTINCT type AS itemtype, service AS field, 'events' AS source FROM glpi_events $eventWhere)
         UNION ALL
-        (SELECT DISTINCT 'File open' AS itemtype, NULL AS items_id, 'interaction' AS source FROM `$table` $interactionWhere)";
+        (SELECT DISTINCT 'File open' AS itemtype, NULL AS field, 'interaction' AS source FROM `$table` $interactionWhere)";
 
         $iterator2 = $DB->doQuery($sql_filters);
 
@@ -258,24 +253,20 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
             switch ($row['source']) {
                 case 'events':
-                    $id = $row['id_search_option'] ?? null;
-                    if (!empty($id)) {
-                        $events[$id] = true;
+                    if($row['field'] != ""){
+                        $events[] = $row['field'];
                     }
                     break;
                 case 'log':
-                    $searchId = $row['id_search_option'] ?? null;
-                    if (is_numeric($searchId)) {
-                        $searchOptions = Search::getOptions($itemtype);
-                        if (!empty($searchOptions[$searchId]['name'])) {
-                            $fields[$itemtype][$searchId] = __($searchOptions[$searchId]['name']);
-                        }
+                    if($row['field'] != ""){
+                        $events[] = $row['field'];
                     }
                     break;
             }
         }
 
-        $events = array_keys($events);
+        $events = array_values($events);
+        $events = array_unique($events);
 
         $configIterator  = $DB->request([
             'SELECT' => ['value'],
@@ -1432,6 +1423,10 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
         $friendlyName = $user->fields['name'];
         $result = self::arrayData($user, $filters, $start);
+        $total_number = $result['count'];
+        $itemtypesRaw = $result['itemtypes'];
+        $fields_event = $result['events'];
+        
         $allLanguages = $result['allLanguages'] ?? [];
         if (count($allLanguages) === 1 && $allLanguages[0] == 'en_GB') {
             $allLanguages[1] = 'en_US';
@@ -1442,26 +1437,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $combinedArray = $result['mergedArrays'] ?? [];
         $terms = ['add', 'delete', 'update', 'purge'];
         $allTranslations = [];
-
-        $combinedArray = array_filter($combinedArray, function ($row) {
-            if ($row['source'] === 'log') {
-                $itemtype = $row['itemtype'] ?? null;
-                $items_id = $row['items_id'] ?? null;
-
-                if ($itemtype && $items_id && class_exists($itemtype)) {
-                    $itemObject = $itemtype::getById($items_id);
-                    return $itemObject && $itemObject->canView();
-                }
-                return false;
-            } elseif ($row['source'] === 'events') {
-                return true;
-            } elseif ($row['source'] === 'interaction') {
-                return true;
-            } elseif ($row['source'] === 'document') {
-                return true;
-            }
-            return false;
-        });
 
         foreach ($terms as $term) {
             $translations = self::getTermTranslationsFromFiles($term, $allLanguages);
@@ -1534,7 +1509,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 } else {
                     $translation = self::editMessage($msgid, '');
                 }
-            } 
+            }
             if (!empty($msg['user_ip'])) {
                 $translation = self::editMessage($msgid, $friendlyName, $msg['user_ip']);
             } elseif ($msg['plugin'] != null) {
@@ -1617,10 +1592,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
         unset($row);
 
-        $result = self::arrayData($user);
-        $total_number = $result['count'];
-        $itemtypesRaw = $result['itemtypes'];
-        $fields_event = $result['events'];
         $filtered_number = count($combinedArray);
         $itemtypes = [];
 
@@ -1648,6 +1619,89 @@ class PluginAccesstransparencyUser extends CommonDBTM
             'is_tab'            => true,
             'filtered_number'   => $filtered_number,
         ]);
+        return true;
+    }
+
+    public static function getDataLogs($last_id_inserted)
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $allLogs = [];
+        $last_id_inserted = (int) $last_id_inserted;
+
+        $logs = "(SELECT id, itemtype, items_id, user_name, date_mod AS date, 'log' AS source
+        FROM glpi_logs WHERE user_name LIKE '%(%)' AND id > {$last_id_inserted})";
+
+        $iterator = $DB->doQuery($logs);
+        while ($row = $iterator->fetch_assoc()) {
+            $data = [
+                'id'       => $row['id'] ?? $row['id_doc'],
+                'date'     => date('Y-m-d H:i', strtotime($row['date'])),
+                'itemtype' => $row['itemtype'],
+                'items_id' => $row['items_id'],
+                'field'    => '',
+                'change'   => '',
+                'source'   => $row['source'],
+                'user_name'     => $row['user_name'],
+            ];
+
+            $class = ucfirst($row['itemtype']);
+
+            if (class_exists($class) && is_subclass_of($class, 'CommonDBTM') && is_numeric($row['items_id'])) {
+                $item = new $class();
+                if (!empty($item->getTable())) {
+                    if ($item->getFromDB((int)$row['items_id'])) {
+                        $data['url'] = $item->getLinkURL();
+                        $loginfo = self::getHistory($item, $row['id']);
+                        $data['field']  = $loginfo['field']  ?? '';
+                        $data['change'] = $loginfo['change'] ?? '';
+                        $data['user_name'] = $row['user_name'] ?? '';
+                    }
+                }
+            }
+
+            $allLogs[] = $data;
+        }
+
+        return $allLogs;
+    }
+
+    public static function getTable($classname = null): string
+    {
+        return 'glpi_plugin_accesstransparency_logevents';
+    }
+
+    public static function install(Migration $migration): void
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $default_charset    = DBConnection::getDefaultCharset();
+        $default_collation  = DBConnection::getDefaultCollation();
+
+        $table = self::getTable();
+        if (!$DB->tableExists($table)) {
+            $migration->displayMessage("Installing $table");
+            $query = "CREATE TABLE IF NOT EXISTS `$table` (
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `date_creation` TIMESTAMP NULL DEFAULT NULL,
+                `users_id` INT UNSIGNED NOT NULL default 0,
+                `itemtype` varchar(255),
+                `field` varchar(255),
+                `message` TEXT,
+                `source` varchar(255),
+                PRIMARY KEY (`id`),
+                KEY `users_id` (`users_id`)
+            )ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
+
+            $DB->doQuery($query);
+        }
+    }
+
+    public static function uninstall(Migration $migration): bool
+    {
+        $migration->dropTable(self::getTable());
         return true;
     }
 }
