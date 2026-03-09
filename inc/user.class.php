@@ -106,7 +106,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         foreach ([$login, $firstName, $surName] as $name) {
             if (!empty($name)) {
-                $eventConditions[] = "`message` LIKE '%$name%'";
+                $eventConditions[] = "`message` LIKE '%($userid)%'";
             }
         }
 
@@ -188,16 +188,16 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
 
         $sql = "
-    (SELECT id, itemtype, users_id AS name, date_creation AS date, field, message, 'log' AS source
-    FROM glpi_plugin_accesstransparency_logevents $logWhere)
-    UNION ALL
-    (SELECT id, type AS itemtype, '' AS name,  date, service AS field, message, 'events' AS source
-    FROM glpi_events $eventWhere)
-    " . ($includeInteraction ? "
-    UNION ALL
-    (SELECT id AS id_doc, 'File open' AS itemtype, '' AS name, date_creation AS date, documents_id AS field, '' AS message, 'interaction' AS source
-    FROM `$table` $interactionWhere)" : "") . "
-    ORDER BY date DESC LIMIT $start, $limit";
+        (SELECT id, itemtype, users_id AS name, date_creation AS date, field, message, 'log' AS source
+        FROM glpi_plugin_accesstransparency_logevents $logWhere)
+        UNION ALL
+        (SELECT id, type AS itemtype, '' AS name,  date, service AS field, message, 'events' AS source
+        FROM glpi_events $eventWhere)
+        " . ($includeInteraction ? "
+        UNION ALL
+        (SELECT id AS id_doc, 'File open' AS itemtype, '' AS name, date_creation AS date, documents_id AS field, '' AS message, 'interaction' AS source
+        FROM `$table` $interactionWhere)" : "") . "
+        ORDER BY date DESC LIMIT $start, $limit";
 
         $iterator = $DB->doQuery($sql);
         while ($row = $iterator->fetch_assoc()) {
