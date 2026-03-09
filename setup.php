@@ -87,4 +87,15 @@ function plugin_init_accesstransparency(): void
             'mode'  => CronTask::MODE_INTERNAL,
         ],
     );
+
+    CronTask::register(
+        'PluginAccesstransparencyConfig',
+        'PurgeAccessTransparencyLogs',
+        HOUR_TIMESTAMP,
+        [
+            'param' => 12,
+            'state' => 1,
+            'mode'  => CronTask::MODE_INTERNAL,
+        ],
+    );
 }
