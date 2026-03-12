@@ -61,8 +61,12 @@ if (file_exists(GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php')) {
     require_once GLPI_ROOT . '/marketplace/accesstransparency/inc/user.class.php';
 }
 
-$combinedArray = PluginAccesstransparencyUser::showFormUser($user, true);
-$friendlyName = $user->getFriendlyName();
+$filters = $_SESSION['accesstransparency']['filters'] ?? [];
+
+$result = PluginAccesstransparencyUser::arrayData($user, $filters, 0);
+$combinedArray = $result['mergedArrays'] ?? [];
+
+$friendlyName = $user->fields['name'];
 
 foreach ($combinedArray as &$row) {
     if (!empty($row['change'])) {

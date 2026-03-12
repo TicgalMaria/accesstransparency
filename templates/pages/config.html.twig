@@ -123,7 +123,7 @@
       <div class="col-xxl-7">
         <select name="log_limit" id="log_limit" class="form-control purgelog_interval">
           {% for i in range(5000, 150000, 5000) %}
-              <option value="{{ i }}" {% if i == log_retention_minutes %}selected{% endif %}>{{ i }}</option>
+              <option value="{{ i }}" {% if i == interval %}selected{% endif %}>{{ i }}</option>
           {% endfor %}
         </select>
       </div>

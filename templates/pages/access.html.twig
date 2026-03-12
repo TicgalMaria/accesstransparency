@@ -100,8 +100,7 @@
 				<td>
 					<select name="filters[change][]" class="form-select logs-filter-select-multiple" multiple>
 						<option value=""></option>
-						{# 'add', 'delete', 'update', 'purge', 'impersonate', 'log in', 'failed' #}
-						{% set change_options = [ 'active', 'install'] %}
+						{% set change_options = [ 'add', 'delete', 'update', 'purge', 'active', 'install', 'impersonate', 'log in', 'failed'] %}
 						{% for change in change_options %}
 						<option value="{{ change }}" {{ change in filters.change ? 'selected' : '' }}>
 							{{ change|capitalize }}

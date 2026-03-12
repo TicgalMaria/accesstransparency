@@ -208,7 +208,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
                 ? (int)$lastInserted->current()['last_log']
                 : 0;
 
-            $logs = PluginAccesstransparencyUser::getDataLogs($last_id_inserted);
+            $logs = PluginAccesstransparencyUser::getDataLogs($last_id_inserted, $interval);
             $latest_id = $last_id_inserted;
             $inserted = 0;
 

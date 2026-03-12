@@ -94,8 +94,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $userid    = $user->getID();
         $login     = $user->fields['name'];
-        $surName   = $user->fields['realname'];
-        $firstName = $user->fields['firstname'];
+        //$surName   = $user->fields['realname'];
+        //$firstName = $user->fields['firstname'];
         $table     = PluginAccesstransparencyUserinteractions::getTable();
         $_SESSION['accesstransparency']['filters'] = $filters;
         $limit     = $_SESSION['glpilist_limit'] ?? 20;
@@ -104,11 +104,11 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $logConditions   = [];
         $eventConditions = [];
 
-        foreach ([$login, $firstName, $surName] as $name) {
-            if (!empty($name)) {
-                $eventConditions[] = "`message` LIKE '%($userid)%'";
-            }
+        //foreach ([$login, $firstName, $surName] as $name) {
+        if (!empty($name)) {
+            $eventConditions[] = "`message` LIKE '%$login%' OR `message` LIKE '%($userid)%'";
         }
+        //}
 
         $logConditions[]   = "`users_id` = '$userid'";
 
@@ -211,7 +211,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             ];
 
             if ($row['source'] === 'log' && class_exists($row['itemtype']) && method_exists($row['itemtype'], 'getById')) {
-
             } elseif ($row['source'] === 'events') {
                 $data['field']  = $row['field'];
             } elseif ($row['source'] === 'interaction') {
@@ -230,9 +229,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $sql_filters = "
         (SELECT DISTINCT itemtype, field, 'log' AS source FROM glpi_plugin_accesstransparency_logevents $logWhere)
         UNION ALL
-        (SELECT DISTINCT type AS itemtype, service AS field, 'events' AS source FROM glpi_events $eventWhere)
-        UNION ALL
-        (SELECT DISTINCT 'File open' AS itemtype, NULL AS field, 'interaction' AS source FROM `$table` $interactionWhere)";
+        (SELECT DISTINCT type AS itemtype, service AS field, 'events' AS source FROM glpi_events $eventWhere)";
 
         $iterator2 = $DB->doQuery($sql_filters);
 
@@ -253,12 +250,12 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
             switch ($row['source']) {
                 case 'events':
-                    if($row['field'] != ""){
+                    if ($row['field'] != "") {
                         $events[] = $row['field'];
                     }
                     break;
                 case 'log':
-                    if($row['field'] != ""){
+                    if ($row['field'] != "") {
                         $events[] = $row['field'];
                     }
                     break;
@@ -1073,17 +1070,30 @@ class PluginAccesstransparencyUser extends CommonDBTM
         return $assets;
     }
 
-    public static function cleanMessages(array $messages, $nameLastname, $lastnameName, $friendlyName, $userid): array
+    public static function cleanMessages(array $messages, $name, $userid): array
     {
         $extractedData = [];
         $documents = self::getUserDocuments($userid);
         $tickets   = self::getUserTickets($userid);
         $assets    = self::getAllAssets();
 
+        $user = new User();
+        $user->getFromDB($userid);
+
+        $realName     = $user->fields['realname'] ?? '';
+        $firstName    = $user->fields['firstname'] ?? '';
+        $nameLastname = $user->getFriendlyName();
+        $lastnameName = $nameLastname;
+        if (str_starts_with($nameLastname, $realName)) {
+            $lastnameName = trim($firstName . ' ' . $realName);
+        } elseif (str_starts_with($nameLastname, $firstName)) {
+            $lastnameName = trim($realName . ' ' . $firstName);
+        }
+
         foreach ($messages as $message) {
             $data = [
                 'user_ip' => null,
-                'acting_user' => $friendlyName,
+                'acting_user' => $name,
                 'second_user' => null,
                 'plugin' => null,
                 'longest_fragment' => null,
@@ -1101,7 +1111,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 $clean = str_replace($data['user_ip'], '', $clean);
             }
 
-            foreach ([$nameLastname, $lastnameName, $friendlyName, $userid] as $term) {
+            foreach ([$name, $lastnameName, $userid] as $term) {
                 if ($term && stripos($clean, $term) !== false) {
                     $parts = preg_split('/\b' . preg_quote($term, '/') . '\b/i', $clean);
                     if (count($parts) > 1) {
@@ -1197,7 +1207,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 $lastWordWithPunct = array_pop($words);
                 $lastWordClean = trim($lastWordWithPunct, ".,()[]{}\"'");
 
-                $exclusions = array_filter([$nameLastname, $lastnameName, $friendlyName, $userid]);
+                $exclusions = array_filter([$name, $userid]);
                 if (!in_array($lastWordClean, $exclusions, true) && self::userExistsInDatabase($lastWordClean)) {
                     $data['second_user'] = $lastWordClean;
                     $data['filter'] = 'impersonate';
@@ -1408,11 +1418,22 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
     public static function showFormUser(User $user, bool $forExport = false): bool | array
     {
-        $filters = $_GET['filters'] ?? [];
-        $start = max(0, intval($_GET['start'] ?? 0));
+        $filters = [];
+
+        if (isset($_GET['filters'])) {
+            $filters = $_GET['filters'];
+        } elseif (!empty($_GET)) {
+            $filters = $_GET;
+        }
+
+        if (!empty($filters)) {
+            $_SESSION['accesstransparency']['filters'] = $filters;
+        }
+
+        $start = $forExport ? 0 : max(0, intval($_GET['start'] ?? 0));
 
         $userid       = $user->getID();
-        $realName     = $user->fields['realname'] ?? '';
+        /*$realName     = $user->fields['realname'] ?? '';
         $firstName    = $user->fields['firstname'] ?? '';
         $nameLastname = $user->getFriendlyName();
         $lastnameName = $nameLastname;
@@ -1420,13 +1441,13 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $lastnameName = trim($firstName . ' ' . $realName);
         } elseif (str_starts_with($nameLastname, $firstName)) {
             $lastnameName = trim($realName . ' ' . $firstName);
-        }
-        $friendlyName = $user->fields['name'];
+        }*/
+        $name = $user->fields['name'];
         $result = self::arrayData($user, $filters, $start);
         $total_number = $result['count'];
         $itemtypesRaw = $result['itemtypes'];
         $fields_event = $result['events'];
-        
+
         $allLanguages = $result['allLanguages'] ?? [];
         if (count($allLanguages) === 1 && $allLanguages[0] == 'en_GB') {
             $allLanguages[1] = 'en_US';
@@ -1463,7 +1484,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
         }
 
-        $result = self::cleanMessages($todos, $nameLastname, $lastnameName, $friendlyName, $userid);
+        $result = self::cleanMessages($todos, $name, $userid);
 
         foreach ($result as $i => $msg) {
             $r = self::getPreviousTranslationLine($msg['longest_fragment'], $allLanguages);
@@ -1505,23 +1526,23 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 if (preg_match('/executes the\s+([^\s]+)/i', $msgid, $actionMatch)) {
                     $action = $msg['action'];
                     $filter = $action;
-                    $translation = self::editMessage($msgid, $friendlyName, $msg['action'], $msg['asset'] ?? '');
+                    $translation = self::editMessage($msgid, $name, $msg['action'], $msg['asset'] ?? '');
                 } else {
                     $translation = self::editMessage($msgid, '');
                 }
             }
             if (!empty($msg['user_ip'])) {
-                $translation = self::editMessage($msgid, $friendlyName, $msg['user_ip']);
+                $translation = self::editMessage($msgid, $name, $msg['user_ip']);
             } elseif ($msg['plugin'] != null) {
-                $translation = self::editMessage($msgid, $msg['plugin'] ?? '', $friendlyName);
+                $translation = self::editMessage($msgid, $msg['plugin'] ?? '', $name);
             } elseif ($msg['second_user'] != null) {
-                $translation = self::editMessage($msgid, $friendlyName, $msg['second_user'] ?? '');
+                $translation = self::editMessage($msgid, $name, $msg['second_user'] ?? '');
             } elseif ($msg['element'] != null) {
-                $translation = self::editMessage($msgid, $friendlyName, $msg['element'] ?? '');
+                $translation = self::editMessage($msgid, $name, $msg['element'] ?? '');
             } elseif ($msg['asset'] != null) {
-                $translation = self::editMessage($msgid, $friendlyName, $msg['asset'] ?? '');
+                $translation = self::editMessage($msgid, $name, $msg['asset'] ?? '');
             } else {
-                $translation = self::editMessage($msgid, $friendlyName);
+                $translation = self::editMessage($msgid, $name);
             }
 
             $allTranslations[$i] = [
@@ -1608,7 +1629,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $href = Toolbox::getItemTypeSearchURL(Preference::class) . '?forcetab=PluginAccess$1';
         TemplateRenderer::getInstance()->display('@accesstransparency/pages/access.html.twig', [
             'userId'            => $userid,
-            'friendlyName'      => $friendlyName,
+            'friendlyName'      => $name,
             'combined'          => $combinedArray,
             'itemtypes'         => $itemtypes,
             'fields'            => $fields_event,
@@ -1622,7 +1643,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         return true;
     }
 
-    public static function getDataLogs($last_id_inserted)
+    public static function getDataLogs($last_id_inserted, int $limit = 5000)
     {
         /** @var \DBmysql $DB */
         global $DB;
@@ -1631,7 +1652,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $last_id_inserted = (int) $last_id_inserted;
 
         $logs = "(SELECT id, itemtype, items_id, user_name, date_mod AS date, 'log' AS source
-        FROM glpi_logs WHERE user_name LIKE '%(%)' AND id > {$last_id_inserted})";
+        FROM glpi_logs WHERE user_name LIKE '%(%)' AND id > {$last_id_inserted} ORDER BY id
+        ASC LIMIT {$limit})";
 
         $iterator = $DB->doQuery($logs);
         while ($row = $iterator->fetch_assoc()) {
