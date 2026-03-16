@@ -1379,7 +1379,13 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
 
         $vars = array_slice($vars, 0, $placeholderCount);
-        $edited = vsprintf($msgid, $vars);
+        if (!empty($vars) && !empty($msgid)) {
+            $edited = vsprintf($msgid, $vars);
+        } elseif (!empty($msgid)) {
+            $edited = $msgid;
+        } else {
+            $edited = '';
+        }
         return trim(str_replace('msgid', '', $edited));
     }
 
