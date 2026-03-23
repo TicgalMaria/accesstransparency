@@ -71,7 +71,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
             Session::checkLoginUser();
             $_SESSION['glpicsrf_token'] = Session::getNewCSRFToken();
-
             $result = self::arrayData($user);
             $number = $result['count'];
             return self::createTabEntry(self::getTypeName(1), $number);
@@ -94,31 +93,24 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $userid    = $user->getID();
         $login     = $user->fields['name'];
-        //$surName   = $user->fields['realname'];
-        //$firstName = $user->fields['firstname'];
         $table     = PluginAccesstransparencyUserinteractions::getTable();
         $_SESSION['accesstransparency']['filters'] = $filters;
         $limit     = $_SESSION['glpilist_limit'] ?? 20;
         $list      = [];
-
         $logConditions   = [];
         $eventConditions = [];
 
-        //foreach ([$login, $firstName, $surName] as $name) {
-        if (!empty($name)) {
+        if (!empty($login)) {
             $eventConditions[] = "`message` LIKE '%$login%' OR `message` LIKE '%($userid)%'";
         }
-        //}
 
         $logConditions[]   = "`users_id` = '$userid'";
-
         $logWhere         = !empty($logConditions) ? '(' . implode(' OR ', $logConditions) . ')' : '';
         $eventWhere       = !empty($eventConditions) ? '(' . implode(' OR ', $eventConditions) . ')' : '';
         $interactionWhere = "`users_id` = $userid";
 
         if (!empty($filters['date'])) {
-            $date = date('Y-m-d', strtotime($filters['date']));
-
+            $date = $DB->escape(date('Y-m-d', strtotime($filters['date'])));
             if (!empty($logWhere)) {
                 $logWhere = "($logWhere) AND `date_creation` LIKE '$date%'";
             } else {
@@ -135,9 +127,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
 
         $includeInteraction = false;
-
         if (!empty($filters['itemtype'])) {
-            $itemtypes = array_map('strtolower', (array)$filters['itemtype']);
+            $itemtypes = array_map(fn($v) => $DB->escape(strtolower($v)), (array)$filters['itemtype']);
 
             if (in_array('__interaction__', $itemtypes)) {
                 $includeInteraction = true;
@@ -159,9 +150,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
 
         if (!empty($filters['field'])) {
-            $fields = array_map(function ($v) {
-                return strtolower($v);
-            }, (array)$filters['field']);
+            $fields = array_map(fn($v) => $DB->escape(strtolower($v)), (array)$filters['field']);
 
             if (!empty($logWhere)) {
                 $logWhere = "($logWhere) AND LOWER(`field`) IN ('" . implode("','", $fields) . "')";
@@ -187,8 +176,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $interactionWhere = !empty($interactionWhere) ? "WHERE $interactionWhere" : '';
         }
 
-        $sql = "
-        (SELECT id, itemtype, users_id AS name, date_creation AS date, field, message, 'log' AS source
+        $sql = "(SELECT id, itemtype, users_id AS name, date_creation AS date, field, message, 'log' AS source
         FROM glpi_plugin_accesstransparency_logevents $logWhere)
         UNION ALL
         (SELECT id, type AS itemtype, '' AS name,  date, service AS field, message, 'events' AS source
@@ -203,15 +191,14 @@ class PluginAccesstransparencyUser extends CommonDBTM
         while ($row = $iterator->fetch_assoc()) {
             $data = [
                 'id'       => $row['id'] ?? $row['id_doc'],
-                'date'     => date('Y-m-d H:i', strtotime($row['date'])),
+                'date'     => strtotime($row['date']) !== false ? date('Y-m-d H:i', strtotime($row['date'])) : '',
                 'itemtype' => $row['itemtype'],
                 'field'    => $row['field'],
                 'change'   => $row['message'],
                 'source'   => $row['source'],
             ];
 
-            if ($row['source'] === 'log' && class_exists($row['itemtype']) && method_exists($row['itemtype'], 'getById')) {
-            } elseif ($row['source'] === 'events') {
+            if ($row['source'] === 'events') {
                 $data['field']  = $row['field'];
             } elseif ($row['source'] === 'interaction') {
                 $data['field'] = '';
@@ -221,20 +208,16 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $list[] = $data;
         }
 
-        $logsTotal         = $DB->doQuery("SELECT COUNT(*) AS total FROM glpi_plugin_accesstransparency_logevents $logWhere")->fetch_assoc()['total'] ?? 0;
-        $eventsTotal       = $DB->doQuery("SELECT COUNT(*) AS total FROM glpi_events $eventWhere")->fetch_assoc()['total'] ?? 0;
-        $interactionsTotal = $DB->doQuery("SELECT COUNT(*) AS total FROM `$table` $interactionWhere")->fetch_assoc()['total'] ?? 0;
-        $count = $logsTotal + $eventsTotal + $interactionsTotal;
-
-        $sql_filters = "
-        (SELECT DISTINCT itemtype, field, 'log' AS source FROM glpi_plugin_accesstransparency_logevents $logWhere)
-        UNION ALL
-        (SELECT DISTINCT type AS itemtype, service AS field, 'events' AS source FROM glpi_events $eventWhere)";
-
+        $countSql = "SELECT 
+        (SELECT COUNT(*) FROM glpi_plugin_accesstransparency_logevents $logWhere) AS logs_total,
+        (SELECT COUNT(*) FROM glpi_events $eventWhere) AS events_total,
+        " . ($includeInteraction ? "(SELECT COUNT(*) FROM `$table` $interactionWhere)" : "0") . " AS interactions_total";
+        $countRow = $DB->doQuery($countSql)->fetch_assoc();
+        $count = ($countRow['logs_total'] ?? 0) + ($countRow['events_total'] ?? 0) + ($countRow['interactions_total'] ?? 0);
+        $sql_filters = "(SELECT DISTINCT itemtype, field, 'log' AS source FROM glpi_plugin_accesstransparency_logevents)
+        UNION ALL (SELECT DISTINCT type AS itemtype, service AS field, 'events' AS source FROM glpi_events)";
         $iterator2 = $DB->doQuery($sql_filters);
-
         $itemtypes = [];
-        $fields    = [];
         $events    = [];
 
         while ($row = $iterator2->fetch_assoc()) {
@@ -246,16 +229,16 @@ class PluginAccesstransparencyUser extends CommonDBTM
             if ($itemtype !== 'Plugin' && str_contains($itemtype, 'Plugin')) {
                 continue;
             }
-            $itemtypes[$itemtype] = $itemtype;
 
+            $itemtypes[$itemtype] = $itemtype;
             switch ($row['source']) {
                 case 'events':
-                    if ($row['field'] != "") {
+                    if ($row['field'] !== "") {
                         $events[] = $row['field'];
                     }
                     break;
                 case 'log':
-                    if ($row['field'] != "") {
+                    if ($row['field'] !== "") {
                         $events[] = $row['field'];
                     }
                     break;
@@ -264,23 +247,24 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $events = array_values($events);
         $events = array_unique($events);
-
         $configIterator  = $DB->request([
             'SELECT' => ['value'],
             'FROM'   => 'glpi_configs',
             'WHERE'  => ['name' => 'language'],
         ]);
         $defaultLanguage = $configIterator->current()['value'] ?? '';
-        $values          = [];
+        $values = [];
         $languageIterator = $DB->request([
             'SELECT' => ['old_value', 'new_value'],
             'FROM'   => 'glpi_logs',
             'WHERE'  => ['id_search_option' => 17, 'itemtype' => 'User', 'items_id' => $userid],
         ]);
+
         foreach ($languageIterator as $log) {
             if (!empty($log['old_value'])) $values[$log['old_value']] = true;
             if (!empty($log['new_value'])) $values[$log['new_value']] = true;
         }
+
         $allLanguages = array_keys($values);
         if (!empty($defaultLanguage) && !in_array($defaultLanguage, $allLanguages, true)) {
             array_unshift($allLanguages, $defaultLanguage);
@@ -290,7 +274,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             'allLanguages' => $allLanguages,
             'mergedArrays' => $list,
             'itemtypes'    => $itemtypes,
-            'fields'       => $fields,
             'count'        => $count,
             'events'       => $events,
         ];
@@ -299,14 +282,12 @@ class PluginAccesstransparencyUser extends CommonDBTM
     public static function applyFilters(array $data, array $filters): array
     {
         $filters = array_values($filters);
-
         return array_filter($data, function ($row) use ($filters) {
             if (empty($filters)) {
                 return true;
             }
 
             $rowValue = null;
-
             if ($row['source'] === 'log') {
                 $rowValue = $row['filter'] ?? null;
             } elseif ($row['source'] === 'events') {
@@ -318,7 +299,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
 
             $valuesToCheck = is_array($rowValue) ? $rowValue : [$rowValue];
-
             foreach ($valuesToCheck as $v) {
                 foreach ($filters as $f) {
                     if (stripos($v, $f) !== false) {
@@ -336,10 +316,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $DBread = DBConnection::getReadConnection();
         $itemtable = $item->getTable();
         $SEARCHOPTION = SearchOption::getOptionsForItemtype($item::getType());
-
         $log = new Log();
         $tmp = [];
-
         $tmp['field']           = "";
         $tmp['change']          = "";
         $tmp['datatype']        = "";
@@ -348,7 +326,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             // This is an internal device ?
             if ($log->fields["linked_action"]) {
                 $action_label = Log::getLinkedActionLabel($log->fields["linked_action"]);
-
                 // Yes it is an internal device
                 switch ($log->fields["linked_action"]) {
                     case Log::HISTORY_CREATE_ITEM:
@@ -783,11 +760,9 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 if (empty($tmp['change'])) {
                     $newval = $log->fields["new_value"];
                     $oldval = $log->fields["old_value"];
-
                     if ($log->fields['id_search_option'] == '70') {
                         $newval_expl = explode(' ', $newval);
                         $oldval_expl = explode(' ', $oldval);
-
                         if ($oldval_expl[0] == '&nbsp;') {
                             $oldval = $log->fields["old_value"];
                         } else {
@@ -869,7 +844,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 foreach ($this->data as $row) {
                     $source = $row['source'] ?? '';
                     $id = $row['id'] ?? $row['id_document'] ?? '';
-                    $date = isset($row['date']) ? date('Y-m-d H:i', strtotime($row['date'])) : '';
+                    $date = isset($row['date']) && strtotime($row['date']) !== false ? date('Y-m-d H:i', strtotime($row['date'])) : '';
                     $userName = $this->friendlyName;
                     $userIdRow = $this->userId;
 
@@ -886,6 +861,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                                 $change,
                             ];
                             break;
+
                         case 'events':
                             $change = preg_replace('#</?(ins|del)>#i', '', $row['change'] ?? '');
                             $rows[] = [
@@ -898,13 +874,13 @@ class PluginAccesstransparencyUser extends CommonDBTM
                                 $change,
                             ];
                             break;
+
                         case 'interaction':
                             $interactionId = $row['id'] ?? $row['id_doc'] ?? '';
                             $docName = '';
 
                             if (!empty($interactionId)) {
                                 global $DB;
-
                                 $iterator = $DB->request([
                                     'SELECT' => ['*'],
                                     'FROM'   => 'glpi_plugin_accesstransparency_userinteractions',
@@ -913,7 +889,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
                                 $array = iterator_to_array($iterator);
                                 $path = '';
-
                                 if (!empty($array)) {
                                     $firstRow = reset($array);
                                     $path = $firstRow['path'] ?? '';
@@ -947,6 +922,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 return 'accessTransparency.csv';
             }
         };
+
         CsvResponse::output($export);
     }
 
@@ -962,7 +938,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 'FROM'   => 'glpi_tickets',
                 'WHERE'  => ['users_id_recipient' => $userid],
             ]);
-
             foreach ($result as $row) {
                 if (!empty($row['id'])) {
                     $tickets[] = (string) $row['id'];
@@ -1046,9 +1021,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         ];
 
         if ($DB->tableExists('glpi_assets_assets')) {
-            $assetTables += [
-                'glpi_assets_assets'       => 'name',
-            ];
+            $assetTables += ['glpi_assets_assets' => 'name',];
         }
 
         foreach ($assetTables as $table => $field) {
@@ -1067,6 +1040,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 error_log("Error al obtener activos de la tabla {$table}: " . $e->getMessage());
             }
         }
+
         return $assets;
     }
 
@@ -1076,10 +1050,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $documents = self::getUserDocuments($userid);
         $tickets   = self::getUserTickets($userid);
         $assets    = self::getAllAssets();
-
         $user = new User();
         $user->getFromDB($userid);
-
         $realName     = $user->fields['realname'] ?? '';
         $firstName    = $user->fields['firstname'] ?? '';
         $nameLastname = $user->getFriendlyName();
@@ -1090,7 +1062,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $lastnameName = trim($realName . ' ' . $firstName);
         }
 
-        foreach ($messages as $message) {
+        foreach ($messages as $clean) {
             $data = [
                 'user_ip' => null,
                 'acting_user' => $name,
@@ -1103,8 +1075,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 'action' => null,
                 'filter' => null,
             ];
-
-            $clean = $message;
 
             if (preg_match('/\b\d{1,3}(?:\.\d{1,3}){3}\b/', $clean, $ipMatch)) {
                 $data['user_ip'] = $ipMatch[0];
@@ -1123,7 +1093,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
 
             $clean = trim(preg_replace('/\s+/', ' ', $clean));
-
             foreach ($documents as $doc) {
                 if (preg_match('/\b' . preg_quote($doc, '/') . '$/i', $clean)) {
                     $data['element'] = $doc;
@@ -1153,7 +1122,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
                     $data['asset'] = $asset;
                     $pos = $match[0][1];
                     $beforeAsset = substr($clean, 0, $pos);
-
                     if ($beforeAsset) {
                         preg_match('/(\S+\s+)?(\S+)$/u', trim($beforeAsset), $matches);
                         $data['action'] = $matches[0] ?? null;
@@ -1167,12 +1135,10 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
             $words = preg_split('/\s+/u', $clean, -1, PREG_SPLIT_NO_EMPTY);
             $restWords = array_slice($words, 1);
-
             foreach ($restWords as $index => $word) {
                 if (preg_match('/^[A-ZÁÉÍÓÚÑ]/u', $word) && strtoupper($word) !== 'IP') {
                     $pluginWords = [$word];
                     $wordsUsed = 1;
-
                     $nextIndex = $index + 1;
                     if (isset($restWords[$nextIndex]) && preg_match('/^[A-ZÁÉÍÓÚÑ]/u', $restWords[$nextIndex])) {
                         $pluginWords[] = $restWords[$nextIndex];
@@ -1180,10 +1146,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
                     }
 
                     $data['plugin'] = implode(' ', $pluginWords);
-
                     $realIndex = $index + $wordsUsed;
                     $remainingWords = array_slice($words, $realIndex + 1);
-
                     $clean = implode(' ', $remainingWords);
                     $clean = preg_replace('/\(\s*[^\)]*\s*\)/', '', $clean);
                     $clean = trim(preg_replace('/\s+/', ' ', $clean));
@@ -1206,7 +1170,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             if (!empty($words)) {
                 $lastWordWithPunct = array_pop($words);
                 $lastWordClean = trim($lastWordWithPunct, ".,()[]{}\"'");
-
                 $exclusions = array_filter([$name, $userid]);
                 if (!in_array($lastWordClean, $exclusions, true) && self::userExistsInDatabase($lastWordClean)) {
                     $data['second_user'] = $lastWordClean;
@@ -1215,7 +1178,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
                     $data['longest_fragment'] = $clean;
                 }
             }
-
             $extractedData[] = $data;
         }
 
@@ -1241,13 +1203,11 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
 
             $baseDir = GLPI_ROOT . '/locales/';
-
             foreach ($translationFiles as $file) {
                 if (!isset(self::$translationCache[$file])) {
                     $filePath = $baseDir . $file . '.po';
                     self::$translationCache[$file] = self::parsePoFile($filePath);
                 }
-
                 foreach (self::$translationCache[$file] as $msgstr => $msgid) {
                     if (self::compareTranslationMessage($message, $msgstr)) {
                         return 'msgid "' . $msgid . '"';
@@ -1279,6 +1239,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 $msgid = $msgstr = null;
             }
         }
+
         return $translations;
     }
 
@@ -1290,7 +1251,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
 
             $filePath = GLPI_ROOT . '/locales/' . $translationFile . '.po';
-
             if (!file_exists($filePath)) {
                 return $message;
             }
@@ -1328,7 +1288,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         foreach ($lines as $line) {
             $line = trim($line);
-
             if (preg_match('/^msgid\s+"(.*)"/', $line, $m)) {
                 $msgid = $m[1];
                 $msgstr = '';
@@ -1366,6 +1325,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         if ($msgid !== '') {
             $translations[$msgid] = $msgstr;
         }
+
         return $translations;
     }
 
@@ -1373,7 +1333,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
     {
         $vars = [$var1 ?? '', $var2 ?? '', $var3 ?? ''];
         $placeholderCount = preg_match_all('/%(\d+\$)?s/', $msgid);
-
         while (count($vars) < $placeholderCount) {
             $vars[] = '';
         }
@@ -1386,23 +1345,23 @@ class PluginAccesstransparencyUser extends CommonDBTM
         } else {
             $edited = '';
         }
+
         return trim(str_replace('msgid', '', $edited));
     }
 
     public static function getTermTranslationsFromFiles(string $term, array $translationFiles): array
     {
         $translations = [];
-
         foreach ($translationFiles as $file) {
             $translations[$file] = self::getFollowingTranslationLineExact($term, $file);
         }
+
         return $translations;
     }
 
     public static function getFollowingTranslationLineExact(string $msgid, string $translationFile): string
     {
         $filePath = GLPI_ROOT . '/locales/' . $translationFile . '.po';
-
         if (!file_exists($filePath)) {
             return $msgid;
         }
@@ -1412,59 +1371,43 @@ class PluginAccesstransparencyUser extends CommonDBTM
         }
 
         $translations = self::$followingTranslationCache[$translationFile];
-
         foreach ($translations as $key => $msgstr) {
             $cleanKey = trim(str_replace('"', '', $key));
             if (strcasecmp($cleanKey, $msgid) === 0) {
                 return $msgstr ?: $msgid;
             }
         }
+
         return $msgid;
     }
 
     public static function showFormUser(User $user, bool $forExport = false): bool | array
     {
         $filters = [];
-
         if (isset($_GET['filters'])) {
             $filters = $_GET['filters'];
-        } elseif (!empty($_GET)) {
-            $filters = $_GET;
-        }
-
-        if (!empty($filters)) {
             $_SESSION['accesstransparency']['filters'] = $filters;
+        } elseif (!empty($_SESSION['accesstransparency']['filters'])) {
+            $filters = $_SESSION['accesstransparency']['filters'];
         }
 
         $start = $forExport ? 0 : max(0, intval($_GET['start'] ?? 0));
-
         $userid       = $user->getID();
-        /*$realName     = $user->fields['realname'] ?? '';
-        $firstName    = $user->fields['firstname'] ?? '';
-        $nameLastname = $user->getFriendlyName();
-        $lastnameName = $nameLastname;
-        if (str_starts_with($nameLastname, $realName)) {
-            $lastnameName = trim($firstName . ' ' . $realName);
-        } elseif (str_starts_with($nameLastname, $firstName)) {
-            $lastnameName = trim($realName . ' ' . $firstName);
-        }*/
         $name = $user->fields['name'];
         $result = self::arrayData($user, $filters, $start);
         $total_number = $result['count'];
         $itemtypesRaw = $result['itemtypes'];
         $fields_event = $result['events'];
-
         $allLanguages = $result['allLanguages'] ?? [];
         if (count($allLanguages) === 1 && $allLanguages[0] == 'en_GB') {
             $allLanguages[1] = 'en_US';
-        } elseif (count($allLanguages) === 1 && $allLanguages[0] != 'en_GB') {
+        } elseif (count($allLanguages) === 1 && $allLanguages[0] !== 'en_GB') {
             $allLanguages[1] = 'en_GB';
         }
 
         $combinedArray = $result['mergedArrays'] ?? [];
         $terms = ['add', 'delete', 'update', 'purge'];
         $allTranslations = [];
-
         foreach ($terms as $term) {
             $translations = self::getTermTranslationsFromFiles($term, $allLanguages);
             foreach ($translations as $lang => $value) {
@@ -1490,9 +1433,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
         }
 
-        $result = self::cleanMessages($todos, $name, $userid);
-
-        foreach ($result as $i => $msg) {
+        $cleanedMessages = self::cleanMessages($todos, $name, $userid);
+        foreach ($cleanedMessages as $i => $msg) {
             $r = self::getPreviousTranslationLine($msg['longest_fragment'], $allLanguages);
             $msg['longest_fragment'] = $r;
             $filter = $msg['filter'] ?? null;
@@ -1519,7 +1461,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
                 }
             }
 
-            if ($allLanguages[0] != 'en_GB') {
+            if ($allLanguages[0] !== 'en_GB') {
                 $defaultTranslation = self::getFollowingTranslationLine($msg['longest_fragment'], $allLanguages[0]);
                 $msg['longest_fragment'] = $defaultTranslation;
             }
@@ -1539,13 +1481,13 @@ class PluginAccesstransparencyUser extends CommonDBTM
             }
             if (!empty($msg['user_ip'])) {
                 $translation = self::editMessage($msgid, $name, $msg['user_ip']);
-            } elseif ($msg['plugin'] != null) {
+            } elseif ($msg['plugin'] !== null) {
                 $translation = self::editMessage($msgid, $msg['plugin'] ?? '', $name);
-            } elseif ($msg['second_user'] != null) {
+            } elseif ($msg['second_user'] !== null) {
                 $translation = self::editMessage($msgid, $name, $msg['second_user'] ?? '');
-            } elseif ($msg['element'] != null) {
+            } elseif ($msg['element'] !== null) {
                 $translation = self::editMessage($msgid, $name, $msg['element'] ?? '');
-            } elseif ($msg['asset'] != null) {
+            } elseif ($msg['asset'] !== null) {
                 $translation = self::editMessage($msgid, $name, $msg['asset'] ?? '');
             } else {
                 $translation = self::editMessage($msgid, $name);
@@ -1620,15 +1562,16 @@ class PluginAccesstransparencyUser extends CommonDBTM
         unset($row);
 
         $filtered_number = count($combinedArray);
+        $additionalParams = http_build_query(['filters' => $filters]);
         $itemtypes = [];
 
-        foreach ($itemtypesRaw as $id => $name) {
+        foreach ($itemtypesRaw as $id => $nickname) {
             if ($id === '__interaction__') {
                 $itemtypes[$id] = __('File open');
-            } elseif ($name == 'Plugin') {
-                $itemtypes[$id] = $name;
+            } elseif ($nickname == 'Plugin') {
+                $itemtypes[$id] = $nickname;
             } else {
-                $itemtypes[$id] = __($name);
+                $itemtypes[$id] = __($nickname);
             }
         }
 
@@ -1645,6 +1588,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             'href'              => $href,
             'is_tab'            => true,
             'filtered_number'   => $filtered_number,
+            'additional_params' => $additionalParams,
         ]);
         return true;
     }
@@ -1656,7 +1600,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $allLogs = [];
         $last_id_inserted = (int) $last_id_inserted;
-
         $logs = "(SELECT id, itemtype, items_id, user_name, date_mod AS date, 'log' AS source
         FROM glpi_logs WHERE user_name LIKE '%(%)' AND id > {$last_id_inserted} ORDER BY id
         ASC LIMIT {$limit})";
@@ -1665,7 +1608,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
         while ($row = $iterator->fetch_assoc()) {
             $data = [
                 'id'       => $row['id'] ?? $row['id_doc'],
-                'date'     => date('Y-m-d H:i', strtotime($row['date'])),
+                'date'     => strtotime($row['date']) !== false ? date('Y-m-d H:i', strtotime($row['date'])) : '',
                 'itemtype' => $row['itemtype'],
                 'items_id' => $row['items_id'],
                 'field'    => '',
@@ -1675,7 +1618,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
             ];
 
             $class = ucfirst($row['itemtype']);
-
             if (class_exists($class) && is_subclass_of($class, 'CommonDBTM') && is_numeric($row['items_id'])) {
                 $item = new $class();
                 if (!empty($item->getTable())) {
@@ -1707,8 +1649,8 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $default_charset    = DBConnection::getDefaultCharset();
         $default_collation  = DBConnection::getDefaultCollation();
-
         $table = self::getTable();
+
         if (!$DB->tableExists($table)) {
             $migration->displayMessage("Installing $table");
             $query = "CREATE TABLE IF NOT EXISTS `$table` (

@@ -98,11 +98,8 @@ class PluginAccesstransparencyDocument extends CommonDBTM
 
         foreach ($result as &$row) {
             $row['name'] = [];
-
             if (!empty($row['users_id'])) {
-                $ids = is_array($row['users_id']) ? $row['users_id'] : explode(',', $row['users_id']);
-                $ids = array_map('intval', array_filter($ids));
-
+                $ids = array_map('intval', array_filter(explode(',', (string)$row['users_id'])));
                 if (!empty($ids)) {
                     $users_result = $DB->request(
                         [
@@ -118,6 +115,7 @@ class PluginAccesstransparencyDocument extends CommonDBTM
                 }
             }
         }
+        unset($row);
 
         TemplateRenderer::getInstance()->display(
             '@accesstransparency/pages/document.html.twig',

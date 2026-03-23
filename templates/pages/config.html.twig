@@ -32,9 +32,7 @@
 {% block config_fields %}
   <form method="POST" action="">
     <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}" />
-
     {{ fields.largeTitle(__('Access Transparency Logs Configuration', 'accesstransparency'), 'ti ti-news') }}
-
       {% set current_retention = log_retention_minutes is defined and log_retention_minutes is not null ? log_retention_minutes : 'keep_all' %}
       {% set file_current_retention = file_log_retention_minutes is defined and file_log_retention_minutes is not null ? file_log_retention_minutes : 'keep_all' %}
 

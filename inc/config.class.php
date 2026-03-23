@@ -35,7 +35,6 @@ class PluginAccesstransparencyConfig extends CommonDBTM
 {
     public static $rightname = 'config';
     private static ?self $instance = null;
-
     public const DELETE_ALL = 'delete_all';
     public const KEEP_ALL   = 'keep_all';
 
@@ -71,12 +70,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
     public function prepareInputForUpdate($input): false|array
     {
         foreach ($this->managed_fields as $field) {
-            if (
-                isset($input[$field])
-                && isset($this->fields[$field])
-                && $this->fields[$field] != $input[$field]
-            ) {
-
+            if (isset($input[$field]) && isset($this->fields[$field]) && $this->fields[$field] != $input[$field]) {
                 Log::history(
                     1,
                     Config::class,
@@ -111,12 +105,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         return '';
     }
 
-    public static function displayTabContentForItem(
-        CommonGLPI $item,
-        $tabnum = 1,
-        $withtemplate = 0
-    ): bool {
-
+    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool {
         if ($item::getType() === Config::getType()) {
             return self::showFormConfig();
         }
@@ -137,7 +126,6 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         ]);
 
         $latest_id = 0;
-
         if ($lastLog->count() > 0) {
             $latest_id = (int)$lastLog->current()['last_log'];
         }
@@ -150,14 +138,12 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         ]);
 
         $last_glpi_log_id = 0;
-
         if ($maxLog->count() > 0) {
             $last_glpi_log_id = (int)$maxLog->current()['id'];
         }
 
         if (!empty($_SESSION['accesstransparency'])) {
             $session_data = $_SESSION['accesstransparency'];
-
             $lastLog = $DB->request([
                 'SELECT' => ['interval', 'id'],
                 'FROM'   => 'glpi_plugin_accesstransparency_lastLog',
@@ -216,7 +202,6 @@ class PluginAccesstransparencyConfig extends CommonDBTM
                 if ($log['id'] <= $last_id_inserted) continue;
 
                 $date = !empty($log['date']) ? date('Y-m-d H:i:s', strtotime($log['date'])) : null;
-
                 $user_id = 0;
                 if (!empty($log['user_name']) && preg_match('/\((\d+)\)/', $log['user_name'], $matches)) {
                     $user_id = (int)$matches[1];
@@ -252,11 +237,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
                 );
             }
 
-            Session::addMessageAfterRedirect(
-                __('Configuration and logs saved successfully!', 'accesstransparency'),
-                true,
-                INFO
-            );
+            Session::addMessageAfterRedirect(__('Configuration and logs saved successfully!', 'accesstransparency'), true, INFO);
         } else {
             $lastLog = $DB->request([
                 'SELECT' => ['interval'],
@@ -300,11 +281,9 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         $default_charset    = DBConnection::getDefaultCharset();
         $default_collation  = DBConnection::getDefaultCollation();
         $default_key_sign   = DBConnection::getDefaultPrimaryKeySignOption();
-
         $tableConfig = self::getTable();
 
         if (!$DB->tableExists($tableConfig)) {
-
             $DB->doQuery("
                 CREATE TABLE `$tableConfig` (
                     `id` INT {$default_key_sign} NOT NULL AUTO_INCREMENT,
@@ -318,12 +297,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
             ");
         }
 
-        if (!$DB->request([
-            'SELECT' => ['id'],
-            'FROM'   => $tableConfig,
-            'LIMIT'  => 1
-        ])->count()) {
-
+        if (!$DB->request(['SELECT' => ['id'], 'FROM'   => $tableConfig, 'LIMIT'  => 1])->count()) {
             $DB->insert($tableConfig, [
                 'id' => 1,
                 'log_retention_minutes' => null,
@@ -332,7 +306,6 @@ class PluginAccesstransparencyConfig extends CommonDBTM
         }
 
         if (!$DB->tableExists('glpi_plugin_accesstransparency_lastLog')) {
-
             $DB->doQuery("
                 CREATE TABLE `glpi_plugin_accesstransparency_lastLog` (
                     `id` INT {$default_key_sign} NOT NULL AUTO_INCREMENT,
@@ -380,6 +353,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
 
         $config = self::getInstance();
         $param  = $config->getLogRetentionMinutes();
+        $table = 'glpi_plugin_accesstransparency_logevents';
 
         if ($param === self::KEEP_ALL) {
             $task->log(__('No logs purged (keep_all setting)', 'accesstransparency'));
@@ -387,20 +361,14 @@ class PluginAccesstransparencyConfig extends CommonDBTM
             return 1;
         }
 
-        $table = 'glpi_plugin_accesstransparency_logevents';
-
         if ($param === self::DELETE_ALL) {
-
             $deleted = $DB->delete($table, ['id' => ['>', 0]]);
             $task->addVolume($deleted);
             return 1;
         }
 
         $months = (int)$param;
-
-        $deleted = $DB->delete($table, [
-            'date_update' => ['<' => ['EXPR' => "DATE_SUB(NOW(), INTERVAL $months MONTH)"]]
-        ]);
+        $deleted = $DB->delete($table, [['date_creation', '<', date('Y-m-d H:i:s', strtotime("-$months months"))]]);
 
         $task->addVolume($deleted);
         $task->log(sprintf(__('Purged %d logs', 'accesstransparency'), $deleted));
@@ -411,7 +379,6 @@ class PluginAccesstransparencyConfig extends CommonDBTM
     public static function uninstall(Migration $migration): void
     {
         global $DB;
-
         $tableConfig = self::getTable();
 
         if ($DB->tableExists($tableConfig)) {

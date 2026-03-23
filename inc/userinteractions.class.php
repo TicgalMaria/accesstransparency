@@ -42,8 +42,8 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         $default_charset    = DBConnection::getDefaultCharset();
         $default_collation  = DBConnection::getDefaultCollation();
-
         $table = self::getTable();
+        
         if (!$DB->tableExists($table)) {
             $migration->displayMessage("Installing $table");
             $query = "CREATE TABLE IF NOT EXISTS `$table` (
@@ -62,7 +62,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
             $migration->addField($table, 'documents_id', 'integer');
             $migration->addKey($table, 'documents_id', 'documents_id');
             $migration->addKey($table, 'users_id', 'users_id');
-
             $migration->migrationOneTable($table);
         }
     }
@@ -103,7 +102,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         echo "<table class='tab_cadre_fixe'>";
         echo "<tr><th>Fecha</th><th>Tipo</th><th>ID del ítem</th></tr>";
-
         if ($iterator->count()) {
             foreach ($iterator as $row) {
                 echo "<tr>";
@@ -136,7 +134,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         $config = PluginAccesstransparencyConfig::getInstance();
         $param  = $config->getLogRetentionMinutes();
-
         if ($param === 'keep_all') {
             $task->log(__('No logs purged (keep_all setting)', 'accesstransparency'));
             $task->addVolume(0);
@@ -145,7 +142,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         $table = self::getTable();
         $query = [];
-
         if ($param === 'delete_all') {
             $query = ['FROM' => $table];
         } else {
@@ -161,7 +157,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         $iterator = $DB->request($query);
         $rows = iterator_to_array($iterator);
         $count = count($rows);
-
         if ($count == 0) {
             $task->log(__('No logs to purge', 'accesstransparency'));
             $task->addVolume(0);

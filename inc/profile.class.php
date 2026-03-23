@@ -28,7 +28,7 @@
  * -------------------------------------------------------------------------
  */
 
-class PluginAccesstransparencyProfile extends Profile
+class PluginAccesstransparencyProfile extends CommonDBTM
 {
     public static $rightname = 'profile';
 
@@ -38,7 +38,7 @@ class PluginAccesstransparencyProfile extends Profile
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string|array
     {
         switch ($item->getType()) {
-            case 'Profile':
+            case Profile::class:
                 return self::createTabEntry('Access Transparency');
         }
         return '';
@@ -82,14 +82,12 @@ class PluginAccesstransparencyProfile extends Profile
         }
 
         $rights = self::getGeneralRights();
-
         $matrix_options = [
             'canedit' => $can_edit,
             'title'   => __('Access Transparency', 'accesstransparency'),
         ];
 
         $profile->displayRightsChoiceMatrix($rights, $matrix_options);
-
         if ($can_edit) {
             echo "<div class='text-center'>";
             echo Html::hidden('id', ['value' => $profile->getID()]);

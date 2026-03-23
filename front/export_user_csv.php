@@ -28,44 +28,30 @@
  * -------------------------------------------------------------------------
  */
 
-ob_start();
-
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 0);
 error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
 
-if (!defined('GLPI_ROOT')) {
-    define('GLPI_ROOT', '../../..');
-}
-include_once GLPI_ROOT . '/inc/includes.php';
-
+include_once GLPI_ROOT . '../../../inc/includes.php';
 if (!Plugin::isPluginActive('accesstransparency')) {
     throw new \Glpi\Exception\Http\NotFoundHttpException();
 }
 
-Session::checkLoginUser();
+Session::checkRight('plugin_accesstransparency_view', READ);
 
-$userId = isset($_GET['id']) ? (string) $_GET['id'] : '';
-if ($userId === '' || $userId <= 0) {
-    die("Invalid user ID");
+$userId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if ($userId <= 0) {
+    throw new \Glpi\Exception\Http\NotFoundHttpException("Invalid user ID");
 }
 
 $user = new User();
 if (!$user->getFromDB((int) $userId)) {
-    die("User not found");
-}
-
-if (file_exists(GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php')) {
-    require_once GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php';
-} else {
-    require_once GLPI_ROOT . '/marketplace/accesstransparency/inc/user.class.php';
+    throw new \Glpi\Exception\Http\NotFoundHttpException("User not found");
 }
 
 $filters = $_SESSION['accesstransparency']['filters'] ?? [];
-
 $result = PluginAccesstransparencyUser::arrayData($user, $filters, 0);
 $combinedArray = $result['mergedArrays'] ?? [];
-
 $friendlyName = $user->fields['name'];
 
 foreach ($combinedArray as &$row) {
@@ -77,6 +63,5 @@ foreach ($combinedArray as &$row) {
 }
 unset($row);
 
-ob_clean();
 PluginAccesstransparencyUser::exportData($combinedArray, $friendlyName, $userId);
 exit;
