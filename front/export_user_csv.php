@@ -1,9 +1,8 @@
 <?php
-
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
- * Copyright (C) 2025 by the TICGAL Team.
+ * Copyright (C) 2026 by the TICGAL Team.
  * https://www.tic.gal
  * -------------------------------------------------------------------------
  * LICENSE
@@ -21,64 +20,48 @@
  * -------------------------------------------------------------------------
  * @package   accesstransparency
  * @author    the TICGAL team
- * @copyright Copyright (c) 2025 TICGAL team
+ * @copyright Copyright (c) 2026 TICGAL team
  * @license   AGPL License 3.0 or (at your option) any later version
  *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
  * @link      https://www.tic.gal
- * @since     2025
+ * @since     2026
  * -------------------------------------------------------------------------
  */
 
-ob_clean();
-ob_start();
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-if (!defined('GLPI_ROOT')) {
-    define('GLPI_ROOT', '../../..');
-}
-
-include_once GLPI_ROOT . '/inc/includes.php';
-
+include_once GLPI_ROOT . '../../../inc/includes.php';
 if (!Plugin::isPluginActive('accesstransparency')) {
     throw new \Glpi\Exception\Http\NotFoundHttpException();
 }
 
-Session::checkLoginUser();
+Session::checkRight('plugin_accesstransparency_view', READ);
 
-$userId = isset($_GET['id']) ? (string) $_GET['id'] : '';
-if ($userId === '') {
-    die("Invalid user ID");
-} elseif ($userId <= 0) {
-    die("Invalid user ID");
+$userId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if ($userId <= 0) {
+    throw new \Glpi\Exception\Http\NotFoundHttpException("Invalid user ID");
 }
 
 $user = new User();
 if (!$user->getFromDB((int) $userId)) {
-    die("User not found");
+    throw new \Glpi\Exception\Http\NotFoundHttpException("User not found");
 }
 
-if(file_exists(GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php')) {
-    require_once GLPI_ROOT . '/plugins/accesstransparency/inc/user.class.php';
-}else{
-    require_once GLPI_ROOT . '/marketplace/accesstransparency/inc/user.class.php';
-}
-
-$combinedArray = PluginAccesstransparencyUser::showFormUser($user, true);
-$friendlyName = $user->getFriendlyName();
+$filters = $_SESSION['accesstransparency']['filters'] ?? [];
+$result = PluginAccesstransparencyUser::arrayData($user, $filters, 0);
+$combinedArray = $result['mergedArrays'] ?? [];
+$friendlyName = $user->fields['name'];
 
 foreach ($combinedArray as &$row) {
-    if (isset($row['userNameRow'])) {
-        $row['userNameRow'] = $user->fields['name'];
-    }
-
     if (!empty($row['change'])) {
+        $row['change'] = preg_replace('#<div\b[^>]*>.*?</div>#si', '', $row['change']);
         $row['change'] = preg_replace('#</?(ins|del)>#i', '', $row['change']);
+        $row['change'] = trim($row['change']);
     }
 }
 unset($row);
 
-PluginAccesstransparencyUser::exportData($combinedArray, $user->fields['name'], $userId);
+PluginAccesstransparencyUser::exportData($combinedArray, $friendlyName, $userId);
 exit;

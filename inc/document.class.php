@@ -1,9 +1,8 @@
 <?php
-
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
- * Copyright (C) 2025 by the TICGAL Team.
+ * Copyright (C) 2026 by the TICGAL Team.
  * https://www.tic.gal
  * -------------------------------------------------------------------------
  * LICENSE
@@ -21,17 +20,14 @@
  * -------------------------------------------------------------------------
  * @package   accesstransparency
  * @author    the TICGAL team
- * @copyright Copyright (c) 2025 TICGAL team
+ * @copyright Copyright (c) 2026 TICGAL team
  * @license   AGPL License 3.0 or (at your option) any later version
  *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
  * @link      https://www.tic.gal
- * @since     2025
+ * @since     2026
  * -------------------------------------------------------------------------
  */
 
-use Twig\Loader\FilesystemLoader;
-use Twig\Environment;
-use Twig\TwigFunction;
 use Glpi\Application\View\TemplateRenderer;
 
 class PluginAccesstransparencyDocument extends CommonDBTM
@@ -102,13 +98,9 @@ class PluginAccesstransparencyDocument extends CommonDBTM
 
         foreach ($result as &$row) {
             $row['name'] = [];
-
             if (!empty($row['users_id'])) {
-                $ids = is_array($row['users_id']) ? $row['users_id'] : explode(',', $row['users_id']);
-                $ids = array_map('intval', array_filter($ids));
-
+                $ids = array_map('intval', array_filter(explode(',', (string)$row['users_id'])));
                 if (!empty($ids)) {
-                    $placeholders = implode(',', array_fill(0, count($ids), '?'));
                     $users_result = $DB->request(
                         [
                             'SELECT' => ['id', 'name'],
@@ -123,44 +115,15 @@ class PluginAccesstransparencyDocument extends CommonDBTM
                 }
             }
         }
-        if (file_exists(GLPI_ROOT . '/plugins/accesstransparency/templates')) {
-            $pluginTemplatePath = GLPI_ROOT . '/plugins/accesstransparency/templates';
-        } else {
-            $pluginTemplatePath = GLPI_ROOT . '/marketplace/accesstransparency/templates';
-        }
-        $coreTemplatePath = GLPI_ROOT . '/templates';
+        unset($row);
 
-        /*
-        $loader = new FilesystemLoader([
-            $pluginTemplatePath,
-            $coreTemplatePath,
-        ]);
-        */
-        /*
-        $twig = new Environment($loader);
-
-        $twig->addFunction(new TwigFunction('__', function ($string) {
-            return __($string);
-        }));
-
-        $twig->addFunction(new TwigFunction('php_config', function ($option) {
-            return ini_get($option);
-        }));
-
-        $twig->addFunction(new TwigFunction('user_pref', function ($key, $default = null) {
-            return $_SESSION['glpilist_limit'] ?? $default;
-        }));
-
-        $twig->addFilter(new \Twig\TwigFilter('safe_dom_id', function ($string) {
-            return preg_replace('/[^a-zA-Z0-9_\-]/', '_', $string);
-        }));
-        */
-        $twig = TemplateRenderer::getInstance();
-        $twig->getEnvironment()->enableAutoReload();
-        echo $twig->render('@accesstransparency/pages/document.html.twig', [
-            'combined' => $result,
-            'documentId'   => $document_id,
-        ]);
+        TemplateRenderer::getInstance()->display(
+            '@accesstransparency/pages/document.html.twig',
+            [
+                'combined'    => $result,
+                'documentId'  => $document_id,
+            ]
+        );
 
         return true;
     }

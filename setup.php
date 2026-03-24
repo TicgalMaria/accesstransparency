@@ -1,9 +1,8 @@
 <?php
-
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
- * Copyright (C) 2025 by the TICGAL Team.
+ * Copyright (C) 2026 by the TICGAL Team.
  * https://www.tic.gal
  * -------------------------------------------------------------------------
  * LICENSE
@@ -21,17 +20,17 @@
  * -------------------------------------------------------------------------
  * @package   accesstransparency
  * @author    the TICGAL team
- * @copyright Copyright (c) 2025 TICGAL team
+ * @copyright Copyright (c) 2026 TICGAL team
  * @license   AGPL License 3.0 or (at your option) any later version
  *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
  * @link      https://www.tic.gal
- * @since     2025
+ * @since     2026
  * -------------------------------------------------------------------------
  */
 
 use Glpi\Plugin\Hooks;
 
-define('PLUGIN_ACCESSTRANSPARENCY_VERSION', '1.1.0-beta');
+define('PLUGIN_ACCESSTRANSPARENCY_VERSION', '1.1.0-beta16');
 define('PLUGIN_ACCESSTRANSPARENCY_MIN_GLPI', '11.0');
 define('PLUGIN_ACCESSTRANSPARENCY_MAX_GLPI', '11.9');
 
@@ -77,11 +76,21 @@ function plugin_init_accesstransparency(): void
     }
 
     $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['accesstransparency'] = 'front/config.form.php';
-    //$PLUGIN_HOOKS[Hooks::DISPLAY_LOGIN]['accesstransparency'] = 'plugin_acesstransparency_displayLogin';
 
     CronTask::register(
         'PluginAccesstransparencyUserinteractions',
         'PurgeInteractionLogs',
+        HOUR_TIMESTAMP,
+        [
+            'param' => 12,
+            'state' => 1,
+            'mode'  => CronTask::MODE_INTERNAL,
+        ],
+    );
+
+    CronTask::register(
+        'PluginAccesstransparencyConfig',
+        'PurgeAccessTransparencyLogs',
         HOUR_TIMESTAMP,
         [
             'param' => 12,

@@ -1,9 +1,8 @@
 <?php
-
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
- * Copyright (C) 2025 by the TICGAL Team.
+ * Copyright (C) 2026 by the TICGAL Team.
  * https://www.tic.gal
  * -------------------------------------------------------------------------
  * LICENSE
@@ -21,11 +20,11 @@
  * -------------------------------------------------------------------------
  * @package   accesstransparency
  * @author    the TICGAL team
- * @copyright Copyright (c) 2025 TICGAL team
+ * @copyright Copyright (c) 2026 TICGAL team
  * @license   AGPL License 3.0 or (at your option) any later version
  *            http://www.gnu.org/licenses/agpl-3.0-standalone.html
  * @link      https://www.tic.gal
- * @since     2025
+ * @since     2026
  * -------------------------------------------------------------------------
  */
 
@@ -43,16 +42,15 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         $default_charset    = DBConnection::getDefaultCharset();
         $default_collation  = DBConnection::getDefaultCollation();
-        $default_key_sign   = DBConnection::getDefaultPrimaryKeySignOption();
-
         $table = self::getTable();
+        
         if (!$DB->tableExists($table)) {
             $migration->displayMessage("Installing $table");
             $query = "CREATE TABLE IF NOT EXISTS `$table` (
-                `id` INT {$default_key_sign} NOT NULL AUTO_INCREMENT,
-                `users_id` INT {$default_key_sign} NOT NULL default 0,
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `users_id` INT UNSIGNED NOT NULL default 0,
                 `path` varchar(255),
-                `documents_id` INT {$default_key_sign} NOT NULL default 0,
+                `documents_id` INT UNSIGNED NOT NULL default 0,
                 `date_creation` TIMESTAMP NULL DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 KEY `users_id` (`users_id`),
@@ -64,7 +62,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
             $migration->addField($table, 'documents_id', 'integer');
             $migration->addKey($table, 'documents_id', 'documents_id');
             $migration->addKey($table, 'users_id', 'users_id');
-
             $migration->migrationOneTable($table);
         }
     }
@@ -105,7 +102,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         echo "<table class='tab_cadre_fixe'>";
         echo "<tr><th>Fecha</th><th>Tipo</th><th>ID del ítem</th></tr>";
-
         if ($iterator->count()) {
             foreach ($iterator as $row) {
                 echo "<tr>";
@@ -138,7 +134,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         $config = PluginAccesstransparencyConfig::getInstance();
         $param  = $config->getLogRetentionMinutes();
-
         if ($param === 'keep_all') {
             $task->log(__('No logs purged (keep_all setting)', 'accesstransparency'));
             $task->addVolume(0);
@@ -147,7 +142,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
 
         $table = self::getTable();
         $query = [];
-
         if ($param === 'delete_all') {
             $query = ['FROM' => $table];
         } else {
@@ -163,7 +157,6 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         $iterator = $DB->request($query);
         $rows = iterator_to_array($iterator);
         $count = count($rows);
-
         if ($count == 0) {
             $task->log(__('No logs to purge', 'accesstransparency'));
             $task->addVolume(0);
@@ -179,7 +172,7 @@ class PluginAccesstransparencyUserinteractions extends CommonDBTM
         }
 
         $task->addVolume($deleted);
-        $task->log(sprintf(__('Purged %d interaction logs', 'accesstransparency'), $deleted)); // texto del log
+        $task->log(sprintf(__('Purged %d interaction logs', 'accesstransparency'), $deleted));
         return 1;
     }
 }
