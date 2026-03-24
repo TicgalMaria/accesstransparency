@@ -33,7 +33,6 @@ if (!Plugin::isPluginActive('accesstransparency')) {
 }
 
 Session::checkRight('config', UPDATE);
-Session::checkCSRF($_POST);
 
 $config = new PluginAccesstransparencyConfig();
 if (isset($_POST["update"])) {
