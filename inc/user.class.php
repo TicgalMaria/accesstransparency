@@ -62,18 +62,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string|array
     {
         if ($item::getType() === User::getType() && Session::haveRight(self::$rightname, READ)) {
-            if (isset($_GET['filters'])) {
-                $_SESSION['accesstransparency']['filters'] = $_GET['filters'];
-            }
-
-            /** @var User $user */
-            $user = $item;
-
-            Session::checkLoginUser();
-            $_SESSION['glpicsrf_token'] = Session::getNewCSRFToken();
-            $result = self::arrayData($user);
-            $number = $result['count'];
-            return self::createTabEntry(self::getTypeName(1), $number);
+            return self::createTabEntry(self::getTypeName(1));
         }
         return '';
     }
@@ -94,101 +83,75 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $userid    = $user->getID();
         $login     = $user->fields['name'];
         $table     = PluginAccesstransparencyUserinteractions::getTable();
-        $_SESSION['accesstransparency']['filters'] = $filters;
         $limit     = $_SESSION['glpilist_limit'] ?? 20;
         $list      = [];
-        $logConditions   = [];
-        $eventConditions = [];
 
+        $where2 = [];
         if (!empty($login)) {
-            $eventConditions[] = "`message` LIKE '%$login%' OR `message` LIKE '%($userid)%'";
+            $where2 = [
+                [
+                    'OR' => [
+                        ['message' => ['LIKE' => "%$login%"]],
+                        ['message' => ['LIKE' => "%($userid)%"]],
+                    ],
+                ]
+            ];
         }
 
-        $logConditions[]   = "`users_id` = '$userid'";
-        $logWhere         = !empty($logConditions) ? '(' . implode(' OR ', $logConditions) . ')' : '';
-        $eventWhere       = !empty($eventConditions) ? '(' . implode(' OR ', $eventConditions) . ')' : '';
-        $interactionWhere = "`users_id` = $userid";
+        $where1 = [
+            'users_id' => $userid,
+        ];
+        $where3 = [
+            'users_id' => $userid,
+        ];
 
         if (!empty($filters['date'])) {
-            $date = $DB->escape(date('Y-m-d', strtotime($filters['date'])));
-            if (!empty($logWhere)) {
-                $logWhere = "($logWhere) AND `date_creation` LIKE '$date%'";
-            } else {
-                $logWhere = "`date_mod` LIKE '$date%'";
-            }
+            $date = date('Y-m-d', strtotime($filters['date']));
+            $where1['date_creation'] = ['LIKE', $date.'%'];
+            $where2['date'] = ['LIKE', $date.'%'];
+            $where3['date_creation'] = $date;
 
-            if (!empty($eventWhere)) {
-                $eventWhere = "($eventWhere) AND `date` LIKE '$date%'";
-            } else {
-                $eventWhere = "`date` LIKE '$date%'";
-            }
-
-            $interactionWhere .= " AND DATE(`date_creation`) = '$date'";
         }
 
-        $includeInteraction = false;
         if (!empty($filters['itemtype'])) {
-            $itemtypes = array_map(fn($v) => $DB->escape(strtolower($v)), (array)$filters['itemtype']);
-
-            if (in_array('__interaction__', $itemtypes)) {
-                $includeInteraction = true;
-            }
-
-            if (!empty($logWhere)) {
-                $logWhere = "($logWhere) AND LOWER(`itemtype`) IN ('" . implode("','", $itemtypes) . "')";
-            } else {
-                $logWhere = "LOWER(`itemtype`) IN ('" . implode("','", $itemtypes) . "')";
-            }
-
-            if (!empty($eventWhere)) {
-                $eventWhere = "($eventWhere) AND LOWER(`type`) IN ('" . implode("','", $itemtypes) . "')";
-            } else {
-                $eventWhere = "LOWER(`type`) IN ('" . implode("','", $itemtypes) . "')";
-            }
-        } else {
-            $includeInteraction = true;
+            $where1['itemtype'] = $filters['itemtype'];
+            $where2['type'] = $filters['itemtype'];
         }
 
         if (!empty($filters['field'])) {
-            $fields = array_map(fn($v) => $DB->escape(strtolower($v)), (array)$filters['field']);
-
-            if (!empty($logWhere)) {
-                $logWhere = "($logWhere) AND LOWER(`field`) IN ('" . implode("','", $fields) . "')";
-            } else {
-                $logWhere = "LOWER(`id_search_option`) IN ('" . implode("','", $fields) . "')";
-            }
-
-            if (!empty($eventWhere)) {
-                $eventWhere = "($eventWhere) AND LOWER(`service`) IN ('" . implode("','", $fields) . "')";
-            } else {
-                $eventWhere = "LOWER(`service`) IN ('" . implode("','", $fields) . "')";
-            }
-        }
-        if (empty($filters['itemtype']) && !empty($filters['field'])) {
-            $includeInteraction = false;
+            $where1['field'] = $filters['field'];
+            $where2['service'] = $filters['field'];
         }
 
-        $logWhere   = !empty($logWhere) ? "WHERE $logWhere" : '';
-        $eventWhere = !empty($eventWhere) ? "WHERE $eventWhere" : '';
-        if (!$includeInteraction) {
-            $interactionWhere = '';
-        } else {
-            $interactionWhere = !empty($interactionWhere) ? "WHERE $interactionWhere" : '';
-        }
+        $sub1 = new \Glpi\DBAL\QuerySubQuery([
+            'SELECT' => ['id', 'itemtype', 'users_id AS name', 'date_creation AS date', 'field', 'message', new \Glpi\DBAL\QueryExpression('"log" AS source')],
+            'FROM'   => 'glpi_plugin_accesstransparency_logevents',
+            'WHERE'  => $where1,
+        ]);
 
-        $sql = "(SELECT id, itemtype, users_id AS name, date_creation AS date, field, message, 'log' AS source
-        FROM glpi_plugin_accesstransparency_logevents $logWhere)
-        UNION ALL
-        (SELECT id, type AS itemtype, '' AS name,  date, service AS field, message, 'events' AS source
-        FROM glpi_events $eventWhere)
-        " . ($includeInteraction ? "
-        UNION ALL
-        (SELECT id AS id_doc, 'File open' AS itemtype, '' AS name, date_creation AS date, documents_id AS field, '' AS message, 'interaction' AS source
-        FROM `$table` $interactionWhere)" : "") . "
-        ORDER BY date DESC LIMIT $start, $limit";
+        $sub2 = new \Glpi\DBAL\QuerySubQuery([
+            'SELECT' => ['id', 'type AS itemtype', new \Glpi\DBAL\QueryExpression('"" AS name'), 'date', 'service AS field', 'message', new \Glpi\DBAL\QueryExpression('"events" AS source')],
+            'FROM'   => 'glpi_events',
+            'WHERE'  => $where2,
+        ]);
 
-        $iterator = $DB->doQuery($sql);
-        while ($row = $iterator->fetch_assoc()) {
+        $sub3 = new \Glpi\DBAL\QuerySubQuery([
+            'SELECT' => ['id AS id_doc', new \Glpi\DBAL\QueryExpression('"File open" AS itemtype'), new \Glpi\DBAL\QueryExpression('"" AS name'), 'date_creation AS date', 'documents_id AS field', new \Glpi\DBAL\QueryExpression('"" AS message'), new \Glpi\DBAL\QueryExpression('"interaction" AS source')],
+            'FROM'   => $table,
+            'WHERE'  => $where3,
+        ]);
+
+        $union = new \Glpi\DBAL\QueryUnion([$sub1, $sub2, $sub3]);
+
+        $sql = [
+            'FROM' => $union,
+            'ORDER' => ['date DESC'],
+            'LIMIT' => $limit,
+            'START' => $start,
+        ];
+
+        $iterator = $DB->request($sql);
+        foreach ($iterator as $row) {
             $data = [
                 'id'       => $row['id'] ?? $row['id_doc'],
                 'date'     => strtotime($row['date']) !== false ? date('Y-m-d H:i', strtotime($row['date'])) : '',
@@ -208,45 +171,57 @@ class PluginAccesstransparencyUser extends CommonDBTM
             $list[] = $data;
         }
 
-        $countSql = "SELECT 
-        (SELECT COUNT(*) FROM glpi_plugin_accesstransparency_logevents $logWhere) AS logs_total,
-        (SELECT COUNT(*) FROM glpi_events $eventWhere) AS events_total,
-        " . ($includeInteraction ? "(SELECT COUNT(*) FROM `$table` $interactionWhere)" : "0") . " AS interactions_total";
-        $countRow = $DB->doQuery($countSql)->fetch_assoc();
-        $count = ($countRow['logs_total'] ?? 0) + ($countRow['events_total'] ?? 0) + ($countRow['interactions_total'] ?? 0);
-        $sql_filters = "(SELECT DISTINCT itemtype, field, 'log' AS source FROM glpi_plugin_accesstransparency_logevents)
-        UNION ALL (SELECT DISTINCT type AS itemtype, service AS field, 'events' AS source FROM glpi_events)";
-        $iterator2 = $DB->doQuery($sql_filters);
-        $itemtypes = [];
+        $countSql = [
+            'COUNT' => 'cpt',
+            'FROM' => $union,
+            'ORDER' => ['date DESC'],
+        ];
+        $countRow = $DB->request($countSql)->current();
+        $sql_filter1 = [
+            'SELECT' => [
+                'itemtype',
+                'field',
+            ],
+            'DISTINCT' => true,
+            'FROM' => 'glpi_plugin_accesstransparency_logevents',
+        ];
+        $itemtypes = [
+            'file_open' => __('File open'),
+        ];
         $events    = [];
 
-        while ($row = $iterator2->fetch_assoc()) {
+        $filterIterator = $DB->request($sql_filter1);
+        foreach ($filterIterator as $row) {
             $itemtype = $row['itemtype'] ??  null;
-            if (empty($itemtype)) {
-                continue;
+            if (!empty($itemtype) && !isset($itemtypes[$itemtype]) && $itemtype !== 'Plugin' && !str_contains($itemtype, 'Plugin')) {
+                $itemtypes[strtolower($itemtype)] = $itemtype;
             }
 
-            if ($itemtype !== 'Plugin' && str_contains($itemtype, 'Plugin')) {
-                continue;
-            }
-
-            $itemtypes[$itemtype] = $itemtype;
-            switch ($row['source']) {
-                case 'events':
-                    if ($row['field'] !== "") {
-                        $events[] = $row['field'];
-                    }
-                    break;
-                case 'log':
-                    if ($row['field'] !== "") {
-                        $events[] = $row['field'];
-                    }
-                    break;
+            if (!empty($row['field']) && !isset($events[$row['field']])) {
+                $events[$row['field']] = $row['field'];
             }
         }
 
-        $events = array_values($events);
-        $events = array_unique($events);
+        $sql_filter2 = [
+            'SELECT' => [
+                'type AS itemtype',
+                'service AS field',
+            ],
+            'DISTINCT' => true,
+            'FROM' => 'glpi_events',
+        ];
+        $filterIterator2 = $DB->request($sql_filter2);
+        foreach ($filterIterator2 as $row) {
+            $itemtype = $row['itemtype'] ??  null;
+            if (!empty($itemtype) && !isset($itemtypes[$itemtype]) && $itemtype !== 'Plugin' && !str_contains($itemtype, 'Plugin')) {
+                $itemtypes[strtolower($itemtype)] = $itemtype;
+            }
+
+            if (!empty($row['field']) && !isset($events[$row['field']])) {
+                $events[$row['field']] = $row['field'];
+            }
+        }
+
         $configIterator  = $DB->request([
             'SELECT' => ['value'],
             'FROM'   => 'glpi_configs',
@@ -274,7 +249,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
             'allLanguages' => $allLanguages,
             'mergedArrays' => $list,
             'itemtypes'    => $itemtypes,
-            'count'        => $count,
+            'count'        => $countRow['cpt'] ?? 0,
             'events'       => $events,
         ];
     }
@@ -1386,9 +1361,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         $filters = [];
         if (isset($_GET['filters'])) {
             $filters = $_GET['filters'];
-            $_SESSION['accesstransparency']['filters'] = $filters;
-        } elseif (!empty($_SESSION['accesstransparency']['filters'])) {
-            $filters = $_SESSION['accesstransparency']['filters'];
         }
 
         $start = $forExport ? 0 : max(0, intval($_GET['start'] ?? 0));
@@ -1563,24 +1535,13 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $filtered_number = count($combinedArray);
         $additionalParams = http_build_query(['filters' => $filters]);
-        $itemtypes = [];
-
-        foreach ($itemtypesRaw as $id => $nickname) {
-            if ($id === '__interaction__') {
-                $itemtypes[$id] = __('File open');
-            } elseif ($nickname == 'Plugin') {
-                $itemtypes[$id] = $nickname;
-            } else {
-                $itemtypes[$id] = __($nickname);
-            }
-        }
 
         $href = Toolbox::getItemTypeSearchURL(Preference::class) . '?forcetab=PluginAccess$1';
         TemplateRenderer::getInstance()->display('@accesstransparency/pages/access.html.twig', [
             'userId'            => $userid,
             'friendlyName'      => $name,
             'combined'          => $combinedArray,
-            'itemtypes'         => $itemtypes,
+            'itemtypes'         => $itemtypesRaw,
             'fields'            => $fields_event,
             'filters'           => $filters,
             'total_number'      => $total_number,
@@ -1637,11 +1598,6 @@ class PluginAccesstransparencyUser extends CommonDBTM
         return $allLogs;
     }
 
-    public static function getTable($classname = null): string
-    {
-        return 'glpi_plugin_accesstransparency_logevents';
-    }
-
     public static function install(Migration $migration): void
     {
         /** @var \DBmysql $DB */
@@ -1649,14 +1605,15 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
         $default_charset    = DBConnection::getDefaultCharset();
         $default_collation  = DBConnection::getDefaultCollation();
-        $table = self::getTable();
+        $default_key_sign   = DBConnection::getDefaultPrimaryKeySignOption();
+        $table = 'glpi_plugin_accesstransparency_logevents';
 
         if (!$DB->tableExists($table)) {
             $migration->displayMessage("Installing $table");
             $query = "CREATE TABLE IF NOT EXISTS `$table` (
-                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `id` INT {$default_key_sign} NOT NULL AUTO_INCREMENT,
                 `date_creation` TIMESTAMP NULL DEFAULT NULL,
-                `users_id` INT UNSIGNED NOT NULL default 0,
+                `users_id` INT {$default_key_sign} NOT NULL default 0,
                 `itemtype` varchar(255),
                 `field` varchar(255),
                 `message` TEXT,
@@ -1671,7 +1628,7 @@ class PluginAccesstransparencyUser extends CommonDBTM
 
     public static function uninstall(Migration $migration): bool
     {
-        $migration->dropTable(self::getTable());
+        $migration->dropTable('glpi_plugin_accesstransparency_logevents');
         return true;
     }
 }

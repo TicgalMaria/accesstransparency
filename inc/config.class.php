@@ -208,7 +208,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
                 }
 
                 $DB->insert(
-                    PluginAccesstransparencyUser::getTable(),
+                    'glpi_plugin_accesstransparency_logevents',
                     [
                         'date_creation' => $date,
                         'users_id'      => $user_id ?: null,

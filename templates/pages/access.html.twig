@@ -30,6 +30,7 @@
 {% import 'components/form/fields_macros.html.twig' as fields %}
 
 {{ include('components/pager.html.twig', {
+	href: href,
     count: total_number,
     additional_params: additional_params
 }) }}
@@ -79,31 +80,41 @@
 					) }}
 				</td>
 				<td>
-					<select name="filters[itemtype][]" class="form-select logs-filter-select-multiple" multiple>
-						<option value=""></option>
-						<option value="__interaction__"{{ '__interaction__' in filters.itemtype ? 'selected' : '' }}>File open</option>
-						{% for key, label in itemtypes %}
-							<option value="{{ key }}" {{ key in filters.itemtype ? 'selected' : '' }}>{{ label }}</option>
-						{% endfor %}
-					</select>
+					{{
+						fields.dropdownArrayField(
+							'filters[itemtype]',
+							'',
+							itemtypes,
+							'',
+							{
+								no_label: true,
+								full_width: true,
+								multiple: true,
+								values: filters.itemtype|default([]),
+								mb: '',
+							},
+						)
+					}}
 				</td>
 				<td>
-					<select name="filters[field][value]" class="form-select logs-filter-select-multiple" multiple>
-						<option value=""></option>
-						{% for key, field in fields %}
-							{% set field_value = field %}
-							<option value="{{ field_value }}" 
-								{% if filters.field is defined and field_value ~ '' in filters.field|map(v => v ~ '') %}
-									selected
-								{% endif %}
-							>
-								{{ field }}
-							</option>
-						{% endfor %}
-					</select>
+					{{
+						fields.dropdownArrayField(
+							'filters[field]',
+							'',
+							fields,
+							'',
+							{
+								no_label: true,
+								full_width: true,
+								multiple: true,
+								values: filters.field|default([]),
+								mb: '',
+							},
+						)
+					}}
 				</td>
 				<td>
-					<select name="filters[change][]" class="form-select logs-filter-select-multiple" multiple>
+					{#<select name="filters[change][]" class="form-select logs-filter-select-multiple" multiple>
 						<option value=""></option>
 						{% set change_options = [ 'add', 'delete', 'update', 'purge', 'active', 'install', 'impersonate', 'log in', 'failed'] %}
 						{% for change in change_options %}
@@ -111,7 +122,7 @@
 							{{ change|capitalize }}
 						</option>
 						{% endfor %}
-					</select>
+					</select>#}
 				</td>
 				<td></td>
 			</tr>
