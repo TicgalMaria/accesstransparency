@@ -1,0 +1,119 @@
+{#
+# -------------------------------------------------------------------------
+# AccessTransparency plugin for GLPI
+# Copyright (C) 2026 by the TICGAL Team.
+# https://www.tic.gal
+# -------------------------------------------------------------------------
+# LICENSE
+# This file is part of the AccessTransparency plugin.
+# AccessTransparency plugin is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+# AccessTransparency plugin is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with AccessTransparency. If not, see <http://www.gnu.org/licenses/>.
+# -------------------------------------------------------------------------
+# @package   accesstransparency
+# @author    the TICGAL team
+# @copyright Copyright (c) 2026 TICGAL team
+# @license   AGPL License 3.0 or (at your option) any later version
+#            http://www.gnu.org/licenses/agpl-3.0-standalone.html
+# @link      https://www.tic.gal
+# @since     2026
+# -------------------------------------------------------------------------
+#}
+
+{% import 'components/form/fields_macros.html.twig' as fields %}
+
+{% if total_number < 1 %}
+   <div class="alert alert-info">
+      {{ __('No historical') }}
+   </div>
+{% else %}
+
+   {{ include('components/pager.html.twig', {count: filtered_number}) }}
+   <div class="table-responsive">
+   <table class="table table-hover">
+      <thead>
+         <tr>
+            <th>{{ __('ID') }}</th>
+            <th>{{ __('Source') }}</th>
+            <th>{{ _n('Date', 'Dates', 1) }}</th>
+            <th>{{ __('Message') }}</th>
+            <th>
+               <span class="float-end log-toolbar mb-0">
+                  <button class="btn btn-sm show_filters {{ filters|length > 0 ? 'btn-secondary active' : 'btn-outline-secondary' }}">
+                     <i class="ti ti-filter"></i>
+                     <span class="d-none d-xl-block">{{ __('Filter') }}</span>
+                  </button>
+               </span>
+            </th>
+         </tr>
+
+         {% if filters|length > 0  %}
+         <tr class="filter_row">
+            <td>
+               <input type="hidden" name="filters[active]" value="1" />
+               <input type="hidden" name="users_id" value="{{ items_id }}" />
+            </td>
+            <td>
+               <select name="filters[source][]" class="form-select logs-filter-select-multiple" multiple>
+                  {% for value, field in type_source %}
+                     <option value="{{ value }}" {{ filters['source'] is defined and value in filters['source'] ? 'selected' : '' }}>
+                        {{ field }}
+                     </option>
+                  {% endfor %}
+               </select>
+            </td>
+            <td>
+               {{ fields.dateField(
+                  'filters[date]',
+                  filters['date'] ?? '',
+                  '',
+                  {
+                     no_label: true,
+                     full_width: true,
+                     mb: '',
+                  },
+               ) }}
+            </td>
+            <td colspan="2">
+            </td>
+         </tr>
+         {% endif %}
+
+      </thead>
+      <tbody>
+      {% if filtered_number < 1 %}
+         <tr><td colspan="4">{{ __('No historical matching your filters') }}</td></tr>
+      {% else %}
+         {% for entry in logs %}
+            <tr>
+               <td>{{ entry['id'] }}</td>
+               <td>{{ entry['source_type'] }}</td>
+               <td>{{ entry['source_date']|formatted_datetime }}</td>
+               <td colspan="2" style="width: 60%">{{ entry['message']|raw }}</td>
+            </tr>
+         {% endfor %}
+      {% endif %}
+      </tbody>
+   </table>
+   </div>{# .table-responsive #}
+
+   <div class="ms-auto d-inline-flex align-items-center d-none d-md-block mb-2 my-2">
+        {{ __('Entries to show:') }}
+        {% include 'components/dropdown/limit.html.twig' %}
+   </div>
+{% endif %}
+
+
+
+<script type="text/javascript">
+$(function() {
+   $('.logs-filter-select-multiple').select2();
+});
+</script>

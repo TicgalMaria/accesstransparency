@@ -28,7 +28,6 @@
  * -------------------------------------------------------------------------
  */
 
-include("../../../inc/includes.php");
 
 header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
@@ -48,15 +47,18 @@ if ($action === 'register' && $ruta) {
     /** @var \DBmysql $DB */
     global $DB;
 
-    try {
-        PluginAccesstransparencyUserinteractions::registerInteraction($path, $_POST['documents_id']);
-
-        echo json_encode(['status' => 'ok', 'ruta' => $path]);
-    } catch (Throwable $e) {
+    $log = new PluginAccesstransparencyLog();
+    $input = [
+        'source_type' => PluginAccesstransparencyLog::DOCUMENT,
+        'source_id'   => $_POST['documents_id'] ?? 0,
+        'source_date' => $_SESSION["glpi_currenttime"],
+        'itemtype'    => Document::getType(),
+        'items_id'    => $_POST['documents_id'] ?? 0,
+        'users_id'    => Session::getLoginUserID(),
+        'new_value'   => $path,
+    ];
+    if (!$log->add($input)) {
         http_response_code(400);
-        echo json_encode([
-            'error'   => 'Error al guardar en la base de datos.',
-            'detalle' => $e->getMessage(),
-        ]);
+        Session::addMessageAfterRedirect(__('Failed to register user interaction', 'accesstransparency'), true, ERROR);
     }
 }

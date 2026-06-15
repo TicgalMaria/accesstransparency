@@ -30,7 +30,7 @@
 
 use Glpi\Plugin\Hooks;
 
-define('PLUGIN_ACCESSTRANSPARENCY_VERSION', '1.1.0-beta17');
+define('PLUGIN_ACCESSTRANSPARENCY_VERSION', '1.1.0-beta');
 define('PLUGIN_ACCESSTRANSPARENCY_MIN_GLPI', '11.0');
 define('PLUGIN_ACCESSTRANSPARENCY_MAX_GLPI', '11.9');
 
@@ -64,11 +64,9 @@ function plugin_init_accesstransparency(): void
     /** @var array $PLUGIN_HOOKS */
     global $PLUGIN_HOOKS;
 
-    $PLUGIN_HOOKS['csrf_compliant']['accesstransparency'] = true;
-
     Plugin::registerClass(PluginAccesstransparencyConfig::class, ['addtabon' => Config::class]);
     Plugin::registerClass(PluginAccesstransparencyProfile::class, ['addtabon' => Profile::class]);
-    Plugin::registerClass(PluginAccesstransparencyUser::class, ['addtabon' => User::class]);
+    Plugin::registerClass(PluginAccesstransparencyLog::class, ['addtabon' => User::class]);
     Plugin::registerClass(PluginAccesstransparencyDocument::class, ['addtabon' => Document::class]);
 
     if (Session::getLoginUserID() && (!isset($_REQUEST['_in_modal']) || !$_REQUEST['_in_modal'])) {
@@ -77,7 +75,7 @@ function plugin_init_accesstransparency(): void
 
     $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['accesstransparency'] = 'front/config.form.php';
 
-    CronTask::register(
+    /*CronTask::register(
         'PluginAccesstransparencyUserinteractions',
         'PurgeInteractionLogs',
         HOUR_TIMESTAMP,
@@ -96,6 +94,18 @@ function plugin_init_accesstransparency(): void
             'param' => 12,
             'state' => 1,
             'mode'  => CronTask::MODE_INTERNAL,
+        ],
+    );*/
+
+    CronTask::register(
+        'PluginAccesstransparencyLog',
+        'pluginaccesstransparencygetlogs',
+        HOUR_TIMESTAMP,
+        [
+            'state' => 1,
+            'mode' => CronTask::MODE_EXTERNAL,
+            'hourmin' => 0,
+            'horumax' => 24
         ],
     );
 }
