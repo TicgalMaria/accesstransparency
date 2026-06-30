@@ -75,31 +75,21 @@ function plugin_init_accesstransparency(): void
 
     $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['accesstransparency'] = 'front/config.form.php';
 
-    /*CronTask::register(
-        'PluginAccesstransparencyUserinteractions',
-        'PurgeInteractionLogs',
-        HOUR_TIMESTAMP,
-        [
-            'param' => 12,
-            'state' => 1,
-            'mode'  => CronTask::MODE_INTERNAL,
-        ],
-    );
-
     CronTask::register(
         'PluginAccesstransparencyConfig',
         'PurgeAccessTransparencyLogs',
         HOUR_TIMESTAMP,
         [
-            'param' => 12,
             'state' => 1,
-            'mode'  => CronTask::MODE_INTERNAL,
+            'mode' => CronTask::MODE_EXTERNAL,
+            'hourmin' => 0,
+            'horumax' => 24
         ],
-    );*/
+    );
 
     CronTask::register(
         'PluginAccesstransparencyLog',
-        'pluginaccesstransparencygetlogs',
+        'PluginAccesstransparencyGetLogs',
         HOUR_TIMESTAMP,
         [
             'state' => 1,

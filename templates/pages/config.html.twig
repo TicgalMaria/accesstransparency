@@ -27,131 +27,18 @@
 # -------------------------------------------------------------------------
 #}
 
+{% extends "pages/setup/general/base_form.html.twig" %}
 {% import 'components/form/fields_macros.html.twig' as fields %}
+{% import 'components/form/basic_inputs_macros.html.twig' as inputs %}
+
+{% set field_options = {
+    'full_width': true,
+} %}
 
 {% block config_fields %}
-  <form method="POST" action="">
-    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}" />
-    {{ fields.largeTitle(__('Access Transparency Logs Configuration', 'accesstransparency'), 'ti ti-news') }}
-      {% set current_retention = log_retention_minutes is defined and log_retention_minutes is not null ? log_retention_minutes : 'keep_all' %}
-      {% set file_current_retention = file_log_retention_minutes is defined and file_log_retention_minutes is not null ? file_log_retention_minutes : 'keep_all' %}
+	{{ fields.largeTitle(__('Access Transparency Logs Configuration', 'accesstransparency'), 'ti ti-news') }}
 
-    {% set logs_interval_options = {
-      'keep_all': __('Keep all', 'accesstransparency'),
-      'delete_all': __('Delete all', 'accesstransparency')
-    } %}
+	{{ inputs.hidden('id', config.fields['id']) }}
 
-    {% set file_logs_options = {
-      'keep_all': __('Keep all', 'accesstransparency'),
-      'delete_all': __('Delete all', 'accesstransparency')
-    } %}
-
-    {% for i in 1..120 %}
-      {% set key = i ~ '' %}
-      {% set logs_interval_options = logs_interval_options|merge({
-        (key): i == 1 ? __('Delete if older than 1 month', 'accesstransparency') : __('Delete if older than %count% months', 'accesstransparency')|replace({'%count%': i})
-      }) %}
-    {% endfor %}
-
-    {% for i in 1..120 %}
-    {% set key = i ~ '' %}
-      {% set file_logs_options = file_logs_options|merge({
-        (key): i == 1 
-          ? __('Delete if older than 1 month', 'accesstransparency') 
-          : __('Delete if older than %count% months', 'accesstransparency')|replace({'%count%': i})
-      }) %}
-    {% endfor %}
-
-    <div class="row mb-3 align-items-center">
-      <div class="col-xxl-5">
-        <label class="form-label" for="file_log_retention_minutes">
-          {{ __('File Open Log retention', 'accesstransparency') }}
-        </label>
-        <small class="text-muted d-block">
-          {{ __('Select how many File Open logs to keep', 'accesstransparency') }}
-        </small>
-      </div>
-      <div class="col-xxl-7">
-        <select name="file_log_retention_minutes" id="file_log_retention_minutes" class="form-control purgelog_interval">
-          {% for key, label in file_logs_options %}
-            {% set key_str = key ~ '' %}
-            {% set current_str = file_current_retention ~ '' %}
-            <option value="{{ key_str }}" {% if current_str == key_str %}selected{% endif %}>
-              {{ label }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-
-    <div class="row mb-3 align-items-center">
-      <div class="col-xxl-5">
-        <label class="form-label" for="log_retention_minutes">
-          {{ __('Log retention', 'accesstransparency') }}
-        </label>
-        <small class="text-muted d-block">
-          {{ __('Select how many logs to keep', 'accesstransparency') }}
-        </small>
-      </div>
-      <div class="col-xxl-7">
-        <select name="log_retention_minutes" id="log_retention_minutes" class="form-control purgelog_interval">
-          {% for key, label in logs_interval_options %}
-            {% set key_str = key ~ '' %}
-            {% set current_str = current_retention ~ '' %}
-            <option value="{{ key_str }}" {% if current_str == key_str %}selected{% endif %}>
-              {{ label }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-
-    <div class="row mb-3 align-items-center">
-      <div class="col-xxl-5">
-        <label class="form-label" for="log_limit">
-          {{ __('Add Logs', 'accesstransparency') }}
-        </label>
-        <small class="text-muted d-block">
-          {{ __('Add new logs to visualize them (It may take a while)', 'accesstransparency') }}
-        </small>
-        <small class="text-muted d-block">
-          {{ __('Logs will be created in the actual GLPI language', 'accesstransparency') }}
-        </small>
-      </div>
-      <div class="col-xxl-7">
-        <select name="log_limit" id="log_limit" class="form-control purgelog_interval">
-          {% for i in range(5000, 150000, 5000) %}
-              <option value="{{ i }}" {% if i == interval %}selected{% endif %}>{{ i }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-
-    <div class="row mb-3 align-items-center">
-      <div class="col-xxl-5">
-        <small class="text-muted d-block">
-          {{ __('Last log added %1$s of %2$s', 'accesstransparency')|format(latest_id, last_glpi_log_id) }}
-        </small>
-      </div>
-    </div>
-
-    <div class="row mb-3">
-      <div class="col-xxl-12 text-end">
-        <button type="submit" class="btn btn-primary" name="save_config">
-          {{ __('Save Configuration & Add Logs', 'accesstransparency') }}
-        </button>
-      </div>
-    </div>
-  </form>
-{% endblock %}
-
-{% block javascripts %}
-  <script type="text/javascript">
-    $(function () {
-      $('.purgelog_interval').select2({
-        width: '100%',
-        minimumResultsForSearch: Infinity
-      });
-    });
-  </script>
+	{{ fields.dropdownArrayField('log_retention_minutes', config.fields['log_retention_minutes'], logs_interval_options, __('Log retention', 'accesstransparency'), field_options)}}
 {% endblock %}
