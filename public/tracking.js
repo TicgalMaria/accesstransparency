@@ -28,24 +28,24 @@
  */
 
 document.addEventListener('click', (event) => {
-  const link = event.target.closest('a');
-  if (!link || !link.href) return;
+   const link = event.target.closest('a');
+   if (!link || !link.href) return;
 
-  const href = link.getAttribute('href');
-  const docidRegex = /docid=\d+/;
+   const href = link.getAttribute('href');
+   const docidRegex = /docid=\d+/;
 
-  if (!docidRegex.test(href)) return;
+   if (!docidRegex.test(href)) return;
 
-  $.ajax({
-    url: '/plugins/accesstransparency/ajax/userinteractions.php',
-    type: 'POST',
-    data: {
-      action: 'register',
-      ruta: href,
-      documents_id: href.match(docidRegex)[0].split('=')[1]
-    },
-    success: function (response) {
-      console.log(response);
-    }
-  });
+   $.ajax({
+      url: '/plugins/accesstransparency/ajax/userinteractions.php',
+      type: 'POST',
+      data: {
+         action: 'register',
+         ruta: href,
+         documents_id: href.match(docidRegex)[0].split('=')[1]
+      },
+      success: function (response) {
+         console.log(response);
+      }
+   });
 });

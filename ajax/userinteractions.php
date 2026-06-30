@@ -1,4 +1,5 @@
 <?php
+
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
@@ -33,7 +34,7 @@ header("Content-Type: text/html; charset=UTF-8");
 Html::header_nocache();
 
 if (!Plugin::isPluginActive('accesstransparency')) {
-    throw new \Glpi\Exception\Http\NotFoundHttpException();
+   throw new \Glpi\Exception\Http\NotFoundHttpException();
 }
 
 Session::checkLoginUser();
@@ -42,23 +43,23 @@ $action = $_POST['action'] ?? '';
 $ruta = $_POST['ruta'] ?? '';
 
 if ($action === 'register' && $ruta) {
-    $path = substr($ruta, 0, 255);
+   $path = substr($ruta, 0, 255);
 
-    /** @var \DBmysql $DB */
-    global $DB;
+   /** @var \DBmysql $DB */
+   global $DB;
 
-    $log = new PluginAccesstransparencyLog();
-    $input = [
-        'source_type' => PluginAccesstransparencyLog::DOCUMENT,
-        'source_id'   => $_POST['documents_id'] ?? 0,
-        'source_date' => $_SESSION["glpi_currenttime"],
-        'itemtype'    => Document::getType(),
-        'items_id'    => $_POST['documents_id'] ?? 0,
-        'users_id'    => Session::getLoginUserID(),
-        'new_value'   => $path,
-    ];
-    if (!$log->add($input)) {
-        http_response_code(400);
-        Session::addMessageAfterRedirect(__('Failed to register user interaction', 'accesstransparency'), true, ERROR);
-    }
+   $log = new PluginAccesstransparencyLog();
+   $input = [
+      'source_type' => PluginAccesstransparencyLog::DOCUMENT,
+      'source_id'   => $_POST['documents_id'] ?? 0,
+      'source_date' => $_SESSION["glpi_currenttime"],
+      'itemtype'    => Document::getType(),
+      'items_id'    => $_POST['documents_id'] ?? 0,
+      'users_id'    => Session::getLoginUserID(),
+      'new_value'   => $path,
+   ];
+   if (!$log->add($input)) {
+      http_response_code(400);
+      Session::addMessageAfterRedirect(__('Failed to register user interaction', 'accesstransparency'), true, ERROR);
+   }
 }

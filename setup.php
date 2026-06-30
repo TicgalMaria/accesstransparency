@@ -1,4 +1,5 @@
 <?php
+
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
@@ -40,19 +41,19 @@ define('PLUGIN_ACCESSTRANSPARENCY_MAX_GLPI', '11.9');
  */
 function plugin_version_accesstransparency(): array
 {
-    return [
-        'name'          => 'Access Transparency',
-        'version'       => PLUGIN_ACCESSTRANSPARENCY_VERSION,
-        'author'        => '<a href="https://tic.gal">TICGAL</a>',
-        'homepage'      => 'https://tic.gal',
-        'license'       => 'AGPLv3+',
-        'requirements'  => [
-            'glpi' => [
-                'min' => PLUGIN_ACCESSTRANSPARENCY_MIN_GLPI,
-                'max' => PLUGIN_ACCESSTRANSPARENCY_MAX_GLPI,
-            ],
-        ],
-    ];
+   return [
+      'name'          => 'Access Transparency',
+      'version'       => PLUGIN_ACCESSTRANSPARENCY_VERSION,
+      'author'        => '<a href="https://tic.gal">TICGAL</a>',
+      'homepage'      => 'https://tic.gal',
+      'license'       => 'AGPLv3+',
+      'requirements'  => [
+         'glpi' => [
+            'min' => PLUGIN_ACCESSTRANSPARENCY_MIN_GLPI,
+            'max' => PLUGIN_ACCESSTRANSPARENCY_MAX_GLPI,
+         ],
+      ],
+   ];
 }
 
 /**
@@ -61,41 +62,41 @@ function plugin_version_accesstransparency(): array
  */
 function plugin_init_accesstransparency(): void
 {
-    /** @var array $PLUGIN_HOOKS */
-    global $PLUGIN_HOOKS;
+   /** @var array $PLUGIN_HOOKS */
+   global $PLUGIN_HOOKS;
 
-    Plugin::registerClass(PluginAccesstransparencyConfig::class, ['addtabon' => Config::class]);
-    Plugin::registerClass(PluginAccesstransparencyProfile::class, ['addtabon' => Profile::class]);
-    Plugin::registerClass(PluginAccesstransparencyLog::class, ['addtabon' => User::class]);
-    Plugin::registerClass(PluginAccesstransparencyDocument::class, ['addtabon' => Document::class]);
+   Plugin::registerClass(PluginAccesstransparencyConfig::class, ['addtabon' => Config::class]);
+   Plugin::registerClass(PluginAccesstransparencyProfile::class, ['addtabon' => Profile::class]);
+   Plugin::registerClass(PluginAccesstransparencyLog::class, ['addtabon' => User::class]);
+   Plugin::registerClass(PluginAccesstransparencyDocument::class, ['addtabon' => Document::class]);
 
-    if (Session::getLoginUserID() && (!isset($_REQUEST['_in_modal']) || !$_REQUEST['_in_modal'])) {
-        $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['accesstransparency'] = ['public/tracking.js'];
-    }
+   if (Session::getLoginUserID() && (!isset($_REQUEST['_in_modal']) || !$_REQUEST['_in_modal'])) {
+      $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['accesstransparency'] = ['public/tracking.js'];
+   }
 
-    $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['accesstransparency'] = 'front/config.form.php';
+   $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['accesstransparency'] = 'front/config.form.php';
 
-    CronTask::register(
-        'PluginAccesstransparencyConfig',
-        'PurgeAccessTransparencyLogs',
-        HOUR_TIMESTAMP,
-        [
-            'state' => 1,
-            'mode' => CronTask::MODE_EXTERNAL,
-            'hourmin' => 0,
-            'horumax' => 24
-        ],
-    );
+   CronTask::register(
+      'PluginAccesstransparencyConfig',
+      'PurgeAccessTransparencyLogs',
+      HOUR_TIMESTAMP,
+      [
+         'state' => 1,
+         'mode' => CronTask::MODE_EXTERNAL,
+         'hourmin' => 0,
+         'horumax' => 24
+      ],
+   );
 
-    CronTask::register(
-        'PluginAccesstransparencyLog',
-        'PluginAccesstransparencyGetLogs',
-        HOUR_TIMESTAMP,
-        [
-            'state' => 1,
-            'mode' => CronTask::MODE_EXTERNAL,
-            'hourmin' => 0,
-            'horumax' => 24
-        ],
-    );
+   CronTask::register(
+      'PluginAccesstransparencyLog',
+      'PluginAccesstransparencyGetLogs',
+      HOUR_TIMESTAMP,
+      [
+         'state' => 1,
+         'mode' => CronTask::MODE_EXTERNAL,
+         'hourmin' => 0,
+         'horumax' => 24
+      ],
+   );
 }

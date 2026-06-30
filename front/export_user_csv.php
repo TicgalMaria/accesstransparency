@@ -1,4 +1,5 @@
 <?php
+
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
@@ -34,19 +35,19 @@ error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
 
 include_once GLPI_ROOT . '../../../inc/includes.php';
 if (!Plugin::isPluginActive('accesstransparency')) {
-    throw new \Glpi\Exception\Http\NotFoundHttpException();
+   throw new \Glpi\Exception\Http\NotFoundHttpException();
 }
 
 Session::checkRight('plugin_accesstransparency_view', READ);
 
 $userId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if ($userId <= 0) {
-    throw new \Glpi\Exception\Http\NotFoundHttpException("Invalid user ID");
+   throw new \Glpi\Exception\Http\NotFoundHttpException("Invalid user ID");
 }
 
 $user = new User();
 if (!$user->getFromDB((int) $userId)) {
-    throw new \Glpi\Exception\Http\NotFoundHttpException("User not found");
+   throw new \Glpi\Exception\Http\NotFoundHttpException("User not found");
 }
 
 $filters = $_SESSION['accesstransparency']['filters'] ?? [];
@@ -55,11 +56,11 @@ $combinedArray = $result['mergedArrays'] ?? [];
 $friendlyName = $user->fields['name'];
 
 foreach ($combinedArray as &$row) {
-    if (!empty($row['change'])) {
-        $row['change'] = preg_replace('#<div\b[^>]*>.*?</div>#si', '', $row['change']);
-        $row['change'] = preg_replace('#</?(ins|del)>#i', '', $row['change']);
-        $row['change'] = trim($row['change']);
-    }
+   if (!empty($row['change'])) {
+      $row['change'] = preg_replace('#<div\b[^>]*>.*?</div>#si', '', $row['change']);
+      $row['change'] = preg_replace('#</?(ins|del)>#i', '', $row['change']);
+      $row['change'] = trim($row['change']);
+   }
 }
 unset($row);
 

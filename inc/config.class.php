@@ -142,7 +142,6 @@ class PluginAccesstransparencyConfig extends CommonDBTM
 
       $log = new PluginAccesstransparencyLog();
       if ($time === self::KEEP_ALL) {
-         $tot = 1;
       } elseif ($time === self::DELETE_ALL) {
          $log->deleteByCriteria(['1' => '1'], true);
       } else {

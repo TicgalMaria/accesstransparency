@@ -1,4 +1,5 @@
 <?php
+
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
@@ -35,19 +36,19 @@
  */
 function plugin_accesstransparency_install(): bool
 {
-    $migration = new Migration(PLUGIN_ACCESSTRANSPARENCY_VERSION);
+   $migration = new Migration(PLUGIN_ACCESSTRANSPARENCY_VERSION);
 
-    foreach (glob(dirname(__FILE__) . '/inc/*') as $filepath) {
-        if (preg_match("/inc.(.+)\.class.php/", $filepath, $matches)) {
-            $classname = 'PluginAccesstransparency' . ucfirst($matches[1]);
-            include_once $filepath;
-            if (method_exists($classname, 'install')) {
-                $classname::install($migration);
-            }
-        }
-    }
+   foreach (glob(dirname(__FILE__) . '/inc/*') as $filepath) {
+      if (preg_match("/inc.(.+)\.class.php/", $filepath, $matches)) {
+         $classname = 'PluginAccesstransparency' . ucfirst($matches[1]);
+         include_once $filepath;
+         if (method_exists($classname, 'install')) {
+            $classname::install($migration);
+         }
+      }
+   }
 
-    return true;
+   return true;
 }
 
 /**
@@ -57,17 +58,17 @@ function plugin_accesstransparency_install(): bool
  */
 function plugin_accesstransparency_uninstall(): bool
 {
-    $migration = new Migration(PLUGIN_ACCESSTRANSPARENCY_VERSION);
+   $migration = new Migration(PLUGIN_ACCESSTRANSPARENCY_VERSION);
 
-    foreach (glob(dirname(__FILE__) . '/inc/*') as $filepath) {
-        if (preg_match("/inc.(.+)\.class.php/", $filepath, $matches)) {
-            $classname = 'PluginAccesstransparency' . ucfirst($matches[1]);
-            include_once $filepath;
-            if (method_exists($classname, 'uninstall')) {
-                $classname::uninstall($migration);
-            }
-        }
-    }
+   foreach (glob(dirname(__FILE__) . '/inc/*') as $filepath) {
+      if (preg_match("/inc.(.+)\.class.php/", $filepath, $matches)) {
+         $classname = 'PluginAccesstransparency' . ucfirst($matches[1]);
+         include_once $filepath;
+         if (method_exists($classname, 'uninstall')) {
+            $classname::uninstall($migration);
+         }
+      }
+   }
 
-    return true;
+   return true;
 }
