@@ -1,4 +1,5 @@
 <?php
+
 /**
  * -------------------------------------------------------------------------
  * AccessTransparency plugin for GLPI
@@ -32,99 +33,133 @@ use Glpi\Application\View\TemplateRenderer;
 
 class PluginAccesstransparencyDocument extends CommonDBTM
 {
-    public static $rightname = 'plugin_accesstransparency_view';
-    public static function getTypeName($nb = 0): string
-    {
-        return __('Access Transparency', 'accesstransparency');
-    }
-    public static function getIcon(): string
-    {
-        return 'fa-solid fa-cube';
-    }
+   public static $rightname = 'plugin_accesstransparency_view';
+   public static function getTypeName($nb = 0): string
+   {
+      return __('Access Transparency', 'accesstransparency');
+   }
+   public static function getIcon(): string
+   {
+      return 'fa-solid fa-cube';
+   }
 
-    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string|array
-    {
-        if ($item::getType() === Document::getType()) {
-            /** @var Document $doc */
-            $doc = $item;
-            if (!Session::haveRight(self::$rightname, READ)) {
-                return '';
-            }
-            $number = count(self::getUserInteractionsRaw($doc));
-            return self::createTabEntry(self::getTypeName(1), $number);
-        }
-        return '';
-    }
+   public static function getDistinctUserNamesValuesInItemLog(CommonDBTM $item): array
+   {
+      /** @var \DBmysql $DB */
+      global $DB;
 
-    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
-    {
-        if ($item::getType() === Document::getType()) {
-            if (!Session::haveRight(self::$rightname, READ)) {
-                return false;
-            }
-            /** @var Document $doc */
-            $doc = $item;
-            self::displayUserInteractionsForDocument($doc);
-            return true;
-        }
+      $items_id = $item->getField('id');
 
-        return false;
-    }
+      $query = [
+         'SELECT'    => 'users_id',
+         'DISTINCT'  => true,
+         'FROM'      => PluginAccesstransparencyLog::getTable(),
+         'WHERE'     => [
+            'itemtype'    => $item::getType(),
+            'items_id'    => $items_id,
+            'source_type' => PluginAccesstransparencyLog::DOCUMENT,
+         ],
+         'ORDER'     => 'id DESC',
+      ];
 
-    public static function getUserInteractionsRaw(\Document $doc): array
-    {
-        /** @var \DBmysql $DB */
-        global $DB;
+      $iterator = $DB->request($query);
 
-        $document_id = intval($doc->getID());
-        $table = 'glpi_plugin_accesstransparency_userinteractions';
+      $values = [];
+      foreach ($iterator as $data) {
+         if (empty($data['users_id'])) {
+            continue;
+         }
+         $values[$data['users_id']] = User::getNameForLog($data['users_id']);
+      }
 
-        $result = $DB->request([
-            'SELECT' => ['users_id', 'date_creation'],
-            'FROM'   => $table,
-            'WHERE'  => ["path LIKE '%=" . $document_id . "'"],
-        ]);
+      asort($values, SORT_NATURAL | SORT_FLAG_CASE);
 
-        return iterator_to_array($result);
-    }
+      return $values;
+   }
 
-    public static function displayUserInteractionsForDocument(\Document $doc)
-    {
-        /** @var \DBmysql $DB */
-        global $DB;
+   public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string|array
+   {
+      if ($item::getType() === Document::getType() && Session::haveRight(self::$rightname, READ)) {
+         $nb = 0;
+         $nb = countElementsInTable(PluginAccesstransparencyLog::getTable(), ['itemtype' => $item::getType(), 'items_id' => $item->getID(), 'source_type' => PluginAccesstransparencyLog::DOCUMENT]);
+         return self::createTabEntry(self::getTypeName(1), $nb);
+      }
+      return '';
+   }
 
-        $result = self::getUserInteractionsRaw($doc);
-        $document_id = intval($doc->getID());
+   public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
+   {
+      if ($item::getType() === Document::getType()) {
+         self::displayUserInteractionsForDocument($item);
+      }
 
-        foreach ($result as &$row) {
-            $row['name'] = [];
-            if (!empty($row['users_id'])) {
-                $ids = array_map('intval', array_filter(explode(',', (string)$row['users_id'])));
-                if (!empty($ids)) {
-                    $users_result = $DB->request(
-                        [
-                            'SELECT' => ['id', 'name'],
-                            'FROM'   => 'glpi_users',
-                            'WHERE'  => ['id' => $ids],
-                        ],
-                    );
+      return true;
+   }
 
-                    foreach ($users_result as $user) {
-                        $row['name'][$user['id']] = $user['name'];
-                    }
-                }
-            }
-        }
-        unset($row);
+   public static function displayUserInteractionsForDocument(Document $doc)
+   {
+      /** @var \DBmysql $DB */
+      global $DB;
 
-        TemplateRenderer::getInstance()->display(
-            '@accesstransparency/pages/document.html.twig',
-            [
-                'combined'    => $result,
-                'documentId'  => $document_id,
-            ]
-        );
+      $document_id = intval($doc->getID());
 
-        return true;
-    }
+      $start       = intval(($_GET["start"] ?? 0));
+      $filters     = $_GET['filters'] ?? [];
+      $is_filtered = count($filters) > 0;
+      $filters['source'] = [PluginAccesstransparencyLog::DOCUMENT];
+      $sql_filters = PluginAccesstransparencyLog::convertFiltersValuesToSqlCriteria($filters);
+      unset($filters['source']);
+
+      $total_number    = countElementsInTable(PluginAccesstransparencyLog::getTable(), ['items_id' => $document_id, 'itemtype' => $doc::getType(), 'source_type' => PluginAccesstransparencyLog::DOCUMENT]);
+      $filtered_number = countElementsInTable(PluginAccesstransparencyLog::getTable(), ['items_id' => $document_id, 'itemtype' => $doc::getType(), 'source_type' => PluginAccesstransparencyLog::DOCUMENT] + $sql_filters);
+
+
+      TemplateRenderer::getInstance()->display('@accesstransparency/pages/document.html.twig', [
+         'total_number'      => $total_number,
+         'filtered_number'   => $filtered_number,
+         'logs'              => $filtered_number > 0
+            ? self::getHistoryData($doc, $start, $_SESSION['glpilist_limit'], $sql_filters)
+            : [],
+         'start'             => $start,
+         'href'              => $doc::getFormURLWithID($document_id),
+         'additional_params' => $is_filtered ? http_build_query(['filters' => $filters]) : "",
+         'is_tab'            => true,
+         'items_id'          => $document_id,
+         'filters'           => $filters,
+         'user_names'        => self::getDistinctUserNamesValuesInItemLog($doc),
+      ]);
+
+      return true;
+   }
+
+   public static function getHistoryData(CommonDBTM $item, $start = 0, $limit = 0, array $sqlfilters = [])
+   {
+      $DBread = DBConnection::getReadConnection();
+
+      $query = [
+         'FROM' => PluginAccesstransparencyLog::getTable(),
+         'WHERE' => [
+            'items_id' => $item->getID(),
+            'itemtype' => $item::getType(),
+         ] + $sqlfilters,
+         'ORDER' => 'source_date DESC',
+      ];
+      if ($limit) {
+         $query['START'] = (int) $start;
+         $query['LIMIT'] = (int) $limit;
+      }
+      $iterator = $DBread->request($query);
+      $logs = [];
+      foreach ($iterator as $data) {
+         $tmp = [];
+
+         $tmp['id'] = $data['id'];
+         $tmp['source_date'] = $data['source_date'];
+         $tmp['user_name'] = User::getNameForLog($data['users_id']);
+
+         $logs[] = $tmp;
+      }
+
+      return $logs;
+   }
 }
