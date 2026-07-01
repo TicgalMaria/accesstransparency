@@ -385,6 +385,10 @@ class PluginAccesstransparencyLog extends CommonDBTM
    {
       $DBread = DBConnection::getReadConnection();
 
+      if (!class_exists($data["itemtype"])) {
+         return sprintf(__('Unknown itemtype: %s', 'accesstransparency'), $data["itemtype"]);
+      }
+
       $SEARCHOPTION = SearchOption::getOptionsForItemtype($data["itemtype"]);
       $log = new Log();
       $log->getFromDB($data["source_id"]);
