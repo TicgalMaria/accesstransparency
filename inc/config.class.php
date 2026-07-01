@@ -108,7 +108,7 @@ class PluginAccesstransparencyConfig extends CommonDBTM
          self::DELETE_ALL => __('Delete all logs', 'accesstransparency'),
       ];
       for ($i = 1; $i <= 120; $i++) {
-         $values[$i] = sprintf(_n('Delete if older than %count% month', 'Delete if older than %count% months', $i, 'accesstransparency'), $i);
+         $values[$i] = sprintf(_n('Delete if older than %s month', 'Delete if older than %s months', $i, 'accesstransparency'), $i);
       }
       return $values;
    }
