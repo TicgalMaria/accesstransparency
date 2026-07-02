@@ -66,7 +66,7 @@ class PluginAccesstransparencyLog extends CommonDBTM
          'WHERE' => [
             'source_type' => self::LOG,
          ],
-         'ORDER' => 'id ASC',
+         'ORDER' => 'source_id DESC',
       ];
       $result = $DB->request($query);
       if ($row = $result->current()) {
@@ -78,7 +78,6 @@ class PluginAccesstransparencyLog extends CommonDBTM
          'WHERE' => [
             'id' => ['>', $last_id],
          ],
-         'ORDER' => 'id ASC',
       ];
       if ($limit > 0) {
          $query['LIMIT'] = $limit;
@@ -116,7 +115,7 @@ class PluginAccesstransparencyLog extends CommonDBTM
          'WHERE' => [
             'source_type' => self::EVENT,
          ],
-         'ORDER' => 'id ASC',
+         'ORDER' => 'source_id DESC',
       ];
       $result = $DB->request($query);
       if ($row = $result->current()) {
@@ -141,7 +140,6 @@ class PluginAccesstransparencyLog extends CommonDBTM
                ]
             ]
          ],
-         'ORDER' => 'id ASC',
       ];
       if ($limit > 0) {
          $query['LIMIT'] = $limit;
