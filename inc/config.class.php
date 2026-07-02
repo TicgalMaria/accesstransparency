@@ -140,10 +140,11 @@ class PluginAccesstransparencyConfig extends CommonDBTM
 
       $log = new PluginAccesstransparencyLog();
       if ($time === self::KEEP_ALL) {
+         return 1;
       } else {
          $months = (int)$time;
          $log->deleteByCriteria([
-            'date_creation' => ['<', date('Y-m-d H:i:s', strtotime(sprintf('-%d months', $months)))]
+            'source_date' => ['<', date('Y-m-d H:i:s', strtotime(sprintf('-%d months', $months)))]
          ], true);
       }
 
