@@ -1,5 +1,9 @@
 # Changelog for AccessTransparency
 
+## [1.2.0] - 2026-07-03
+### Added
+- Consolidate logs into a single table
+
 ## [1.1.0] - 2026-02-05
 ### Bugfix
 - Fix RAM Consumption
